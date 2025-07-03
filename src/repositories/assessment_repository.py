@@ -60,7 +60,7 @@ class AssessmentRepository:
         offset: int = 0
     ) -> List[FormalAssessment]:
         """Get user's formal assessments with pagination"""
-        query = self._collection.where("user_id", "==", user_id)
+        query = self._collection.where(field_path="user_id", op_string="==", value=user_id)
         query = query.order_by("assessed_at", direction="DESCENDING")
         query = query.limit(limit).offset(offset)
         
@@ -86,7 +86,7 @@ class AssessmentRepository:
     
     async def get_latest_assessment_by_user_id(self, user_id: str) -> Optional[FormalAssessment]:
         """Get user's most recent formal assessment"""
-        query = self._collection.where("user_id", "==", user_id)
+        query = self._collection.where(field_path="user_id", op_string="==", value=user_id)
         query = query.order_by("assessed_at", direction="DESCENDING")
         query = query.limit(1)
         
@@ -173,7 +173,7 @@ class AssessmentRepository:
     
     async def get_feedback_by_session_id(self, session_id: str) -> Optional[Feedback]:
         """Get feedback for a specific session"""
-        query = self._collection.where("session_id", "==", session_id)
+        query = self._collection.where(field_path="session_id", op_string="==", value=session_id)
         query = query.limit(1)
         
         docs = query.stream()
@@ -200,7 +200,7 @@ class AssessmentRepository:
         offset: int = 0
     ) -> List[Feedback]:
         """Get user's feedback history with pagination"""
-        query = self._collection.where("user_id", "==", user_id)
+        query = self._collection.where(field_path="user_id", op_string="==", value=user_id)
         query = query.order_by("created_at", direction="DESCENDING")
         query = query.limit(limit).offset(offset)
         
@@ -283,7 +283,7 @@ class AssessmentRepository:
     
     async def get_latest_skill_metrics_by_user_id(self, user_id: str) -> Optional[SkillMetrics]:
         """Get user's most recent skill metrics"""
-        query = self._collection.where("user_id", "==", user_id)
+        query = self._collection.where(field_path="user_id", op_string="==", value=user_id)
         query = query.order_by("calculated_at", direction="DESCENDING")
         query = query.limit(1)
         
@@ -311,9 +311,9 @@ class AssessmentRepository:
         end_date: datetime
     ) -> List[SkillMetrics]:
         """Get user's skill metrics within a date range"""
-        query = self._collection.where("user_id", "==", user_id)
-        query = query.where("calculated_at", ">=", start_date.isoformat())
-        query = query.where("calculated_at", "<=", end_date.isoformat())
+        query = self._collection.where(field_path="user_id", op_string="==", value=user_id)
+        query = query.where(field_path="calculated_at", op_string=">=", value=start_date.isoformat())
+        query = query.where(field_path="calculated_at", op_string="<=", value=end_date.isoformat())
         query = query.order_by("calculated_at", direction="ASCENDING")
         
         docs = query.stream()
@@ -341,7 +341,7 @@ class AssessmentRepository:
         offset: int = 0
     ) -> List[SkillMetrics]:
         """Get user's skill metrics history with pagination"""
-        query = self._collection.where("user_id", "==", user_id)
+        query = self._collection.where(field_path="user_id", op_string="==", value=user_id)
         query = query.order_by("calculated_at", direction="DESCENDING")
         query = query.limit(limit).offset(offset)
         
@@ -389,7 +389,7 @@ class AssessmentRepository:
     # Query methods for business logic
     async def count_assessments_by_user_id(self, user_id: str) -> int:
         """Count total assessments for a user"""
-        query = self._collection.where("user_id", "==", user_id)
+        query = self._collection.where(field_path="user_id", op_string="==", value=user_id)
         docs = query.stream()
         
         count = 0
@@ -409,9 +409,9 @@ class AssessmentRepository:
         end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
         
-        query = self._collection.where("user_id", "==", user_id)
-        query = query.where("assessed_at", ">=", start_date.isoformat())
-        query = query.where("assessed_at", "<=", end_date.isoformat())
+        query = self._collection.where(field_path="user_id", op_string="==", value=user_id)
+        query = query.where(field_path="assessed_at", op_string=">=", value=start_date.isoformat())
+        query = query.where(field_path="assessed_at", op_string="<=", value=end_date.isoformat())
         query = query.order_by("assessed_at", direction="ASCENDING")
         
         docs = query.stream()
@@ -446,9 +446,9 @@ class AssessmentRepository:
         end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
         
-        query = self._collection.where("user_id", "==", user_id)
-        query = query.where("calculated_at", ">=", start_date.isoformat())
-        query = query.where("calculated_at", "<=", end_date.isoformat())
+        query = self._collection.where(field_path="user_id", op_string="==", value=user_id)
+        query = query.where(field_path="calculated_at", op_string=">=", value=start_date.isoformat())
+        query = query.where(field_path="calculated_at", op_string="<=", value=end_date.isoformat())
         query = query.order_by("calculated_at", direction="ASCENDING")
         
         docs = query.stream()
