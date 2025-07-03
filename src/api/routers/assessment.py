@@ -1,15 +1,27 @@
 from typing import List
 from fastapi import APIRouter, HTTPException, status, Query, Depends
+from google.cloud.firestore_v1.async_client import AsyncClient
 from src.models.assessment import FormalAssessment, Feedback, SkillMetrics
 from src.api.schemas.requests import AssessmentTrigger
 from src.services.assessment_service import AssessmentService
+from src.repositories.assessment_repository import AssessmentRepository
+from src.dependencies import get_firestore_client
 
 router = APIRouter(tags=["Assessment"])
 
 
-def get_assessment_service() -> AssessmentService:
-    """Dependency to get AssessmentService instance"""
-    return AssessmentService()
+def get_assessment_repository(
+    firestore_client: AsyncClient = Depends(get_firestore_client)
+) -> AssessmentRepository:
+    """Dependency to get AssessmentRepository instance with Firestore client"""
+    return AssessmentRepository(firestore_client)
+
+
+def get_assessment_service(
+    assessment_repository: AssessmentRepository = Depends(get_assessment_repository)
+) -> AssessmentService:
+    """Dependency to get AssessmentService instance with repository injected"""
+    return AssessmentService(assessment_repository)
 
 
 @router.get("/users/{user_id}/assessments", response_model=List[FormalAssessment])

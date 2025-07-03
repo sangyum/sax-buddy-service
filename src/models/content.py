@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, field_serializer, ConfigDict
 
 
 class ExerciseType(str, Enum):
@@ -33,9 +33,9 @@ class Exercise(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Exercise creation timestamp")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    @field_serializer('created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime) -> str:
+        return dt.isoformat()
 
 
 class LessonPlan(BaseModel):
@@ -51,9 +51,9 @@ class LessonPlan(BaseModel):
     completed_at: Optional[datetime] = Field(None, description="Plan completion timestamp")
     next_formal_assessment_due: Optional[datetime] = Field(None, description="When formal assessment is due")
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    @field_serializer('generated_at', 'completed_at', 'next_formal_assessment_due')
+    def serialize_dt(self, dt: datetime) -> str:
+        return dt.isoformat()
 
 
 class Lesson(BaseModel):
@@ -70,6 +70,6 @@ class Lesson(BaseModel):
     completed_at: Optional[datetime] = Field(None, description="Lesson completion timestamp")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Lesson creation timestamp")
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    @field_serializer('completed_at', 'created_at')
+    def serialize_dt(self, dt: datetime) -> str:
+        return dt.isoformat()

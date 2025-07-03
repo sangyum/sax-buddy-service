@@ -1,14 +1,26 @@
 from fastapi import APIRouter, HTTPException, status, Depends
+from google.cloud.firestore_v1.async_client import AsyncClient
 from src.models.user import User, UserProfile, UserProgress
 from src.api.schemas.requests import UserCreate, UserProfileUpdate
 from src.services.user_service import UserService
+from src.repositories.user_repository import UserRepository
+from src.dependencies import get_firestore_client
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-def get_user_service() -> UserService:
-    """Dependency to get UserService instance"""
-    return UserService()
+def get_user_repository(
+    firestore_client: AsyncClient = Depends(get_firestore_client)
+) -> UserRepository:
+    """Dependency to get UserRepository instance with Firestore client"""
+    return UserRepository(firestore_client)
+
+
+def get_user_service(
+    user_repository: UserRepository = Depends(get_user_repository)
+) -> UserService:
+    """Dependency to get UserService instance with repository injected"""
+    return UserService(user_repository)
 
 
 @router.post("", response_model=User, status_code=status.HTTP_201_CREATED)

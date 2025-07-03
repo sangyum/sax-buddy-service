@@ -1,15 +1,27 @@
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, status, Query, Depends
+from google.cloud.firestore_v1.async_client import AsyncClient
 from src.models.content import Exercise, LessonPlan, Lesson, ExerciseType, DifficultyLevel
 from src.api.schemas.requests import LessonUpdate
 from src.services.content_service import ContentService
+from src.repositories.content_repository import ContentRepository
+from src.dependencies import get_firestore_client
 
 router = APIRouter(tags=["Content"])
 
 
-def get_content_service() -> ContentService:
-    """Dependency to get ContentService instance"""
-    return ContentService()
+def get_content_repository(
+    firestore_client: AsyncClient = Depends(get_firestore_client)
+) -> ContentRepository:
+    """Dependency to get ContentRepository instance with Firestore client"""
+    return ContentRepository(firestore_client)
+
+
+def get_content_service(
+    content_repository: ContentRepository = Depends(get_content_repository)
+) -> ContentService:
+    """Dependency to get ContentService instance with repository injected"""
+    return ContentService(content_repository)
 
 
 @router.get("/exercises", response_model=List[Exercise])

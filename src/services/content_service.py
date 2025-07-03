@@ -1,10 +1,14 @@
 from typing import List, Optional
 from src.models.content import Exercise, LessonPlan, Lesson, ExerciseType, DifficultyLevel
 from src.api.schemas.requests import LessonUpdate
+from src.repositories.content_repository import ContentRepository
 
 
 class ContentService:
     """Service class for content-related operations"""
+    
+    def __init__(self, content_repository: ContentRepository):
+        self.content_repository = content_repository
     
     async def list_exercises(
         self, 
@@ -13,18 +17,15 @@ class ContentService:
         limit: int = 20
     ) -> List[Exercise]:
         """List exercises with optional filtering"""
-        # TODO: Implement exercise listing logic with filtering
-        raise NotImplementedError("Exercise listing not implemented yet")
+        return await self.content_repository.list_exercises(exercise_type, difficulty_level, limit)
     
     async def get_exercise_by_id(self, exercise_id: str) -> Optional[Exercise]:
         """Get exercise details"""
-        # TODO: Implement exercise retrieval logic
-        raise NotImplementedError("Exercise retrieval not implemented yet")
+        return await self.content_repository.get_exercise_by_id(exercise_id)
     
     async def get_user_lesson_plans(self, user_id: str, is_active: bool = True) -> List[LessonPlan]:
         """Get user's lesson plans"""
-        # TODO: Implement lesson plan retrieval logic
-        raise NotImplementedError("Lesson plan retrieval not implemented yet")
+        return await self.content_repository.get_lesson_plans_by_user_id(user_id, is_active)
     
     async def generate_lesson_plan(self, user_id: str) -> LessonPlan:
         """Generate new lesson plan for user"""
@@ -33,13 +34,11 @@ class ContentService:
     
     async def get_lessons_in_plan(self, plan_id: str) -> List[Lesson]:
         """Get lessons in plan"""
-        # TODO: Implement lesson retrieval logic
-        raise NotImplementedError("Lesson retrieval not implemented yet")
+        return await self.content_repository.get_lessons_by_plan_id(plan_id)
     
     async def get_lesson_by_id(self, lesson_id: str) -> Optional[Lesson]:
         """Get lesson details"""
-        # TODO: Implement lesson retrieval logic
-        raise NotImplementedError("Lesson retrieval not implemented yet")
+        return await self.content_repository.get_lesson_by_id(lesson_id)
     
     async def update_lesson(self, lesson_id: str, lesson_update: LessonUpdate) -> Optional[Lesson]:
         """Update lesson completion status"""

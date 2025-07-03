@@ -1,10 +1,52 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+import firebase_admin
+from firebase_admin import credentials, firestore_async
+import os
 from src.api.routers import users, performance, content, assessment, reference
 from src.api.openapi import custom_openapi
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize Firebase Admin SDK on startup, cleanup on shutdown"""
+    # Startup - Initialize Firebase Admin SDK
+    try:
+        if not firebase_admin._apps:
+            # Check if running on Google Cloud (uses Application Default Credentials)
+            if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or os.getenv("GAE_APPLICATION"):
+                firebase_admin.initialize_app()
+            else:
+                # Local development - use service account key
+                service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "serviceAccountKey.json")
+                if os.path.exists(service_account_path):
+                    cred = credentials.Certificate(service_account_path)
+                    firebase_admin.initialize_app(cred)
+                else:
+                    # Fallback to default credentials
+                    firebase_admin.initialize_app()
+        
+        # Store Firestore async client in app state
+        app.state.firestore_client = firestore_async.client()
+        print("Firebase Admin SDK initialized successfully")
+        
+    except Exception as e:
+        print(f"Warning: Failed to initialize Firebase Admin SDK: {e}")
+        app.state.firestore_client = None
+    
+    yield
+    
+    # Shutdown - Cleanup Firebase resources
+    try:
+        if firebase_admin._apps:
+            firebase_admin.delete_app(firebase_admin.get_app())
+            print("Firebase Admin SDK cleaned up successfully")
+    except Exception as e:
+        print(f"Error during Firebase cleanup: {e}")
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Sax Buddy Service API",
     description="""
     REST backend service for a multi-agent AI application for saxophone learning.

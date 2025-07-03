@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, field_validator, field_serializer, ConfigDict
 
 
 class SkillLevel(str, Enum):
@@ -24,9 +24,9 @@ class User(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Account creation timestamp")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    @field_serializer('created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime) -> str:
+        return dt.isoformat()
 
 
 class UserProfile(BaseModel):
@@ -54,9 +54,9 @@ class UserProfile(BaseModel):
             raise ValueError('Practice duration must be at least 1 minute')
         return v
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    @field_serializer('created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime) -> str:
+        return dt.isoformat()
 
 
 class UserProgress(BaseModel):
@@ -73,6 +73,6 @@ class UserProgress(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Progress record creation timestamp")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    @field_serializer('last_formal_assessment_date', 'created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime) -> str:
+        return dt.isoformat()

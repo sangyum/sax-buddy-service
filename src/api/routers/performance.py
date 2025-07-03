@@ -1,15 +1,27 @@
 from typing import List
 from fastapi import APIRouter, HTTPException, status, Depends
+from google.cloud.firestore_v1.async_client import AsyncClient
 from src.models.performance import PerformanceSession, PerformanceMetrics
 from src.api.schemas.requests import PerformanceSessionCreate, PerformanceSessionUpdate, PerformanceMetricsCreate
 from src.services.performance_service import PerformanceService
+from src.repositories.performance_repository import PerformanceRepository
+from src.dependencies import get_firestore_client
 
 router = APIRouter(prefix="/performance", tags=["Performance"])
 
 
-def get_performance_service() -> PerformanceService:
-    """Dependency to get PerformanceService instance"""
-    return PerformanceService()
+def get_performance_repository(
+    firestore_client: AsyncClient = Depends(get_firestore_client)
+) -> PerformanceRepository:
+    """Dependency to get PerformanceRepository instance with Firestore client"""
+    return PerformanceRepository(firestore_client)
+
+
+def get_performance_service(
+    performance_repository: PerformanceRepository = Depends(get_performance_repository)
+) -> PerformanceService:
+    """Dependency to get PerformanceService instance with repository injected"""
+    return PerformanceService(performance_repository)
 
 
 @router.post("/sessions", response_model=PerformanceSession, status_code=status.HTTP_201_CREATED)

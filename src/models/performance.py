@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Dict, Any, Optional
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, field_serializer, ConfigDict
 
 
 class SessionStatus(str, Enum):
@@ -23,9 +23,9 @@ class PerformanceSession(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Record creation timestamp")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    @field_serializer('started_at', 'ended_at', 'created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime) -> str:
+        return dt.isoformat()
 
 
 class PerformanceMetrics(BaseModel):
@@ -39,6 +39,6 @@ class PerformanceMetrics(BaseModel):
     raw_metrics: Dict[str, Any] = Field(default_factory=dict, description="Raw DSP analysis data from mobile")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Metrics creation timestamp")
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    @field_serializer('created_at')
+    def serialize_dt(self, dt: datetime) -> str:
+        return dt.isoformat()

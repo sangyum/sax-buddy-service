@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, field_serializer, ConfigDict
 
 
 class AssessmentType(str, Enum):
@@ -43,13 +43,14 @@ class FormalAssessment(BaseModel):
     assessed_at: datetime = Field(default_factory=datetime.utcnow, description="Assessment timestamp")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Record creation timestamp")
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    @field_serializer('assessed_at', 'created_at')
+    def serialize_dt(self, dt: datetime) -> str:
+        return dt.isoformat()
 
 
 class Feedback(BaseModel):
     id: str = Field(..., description="Unique feedback identifier")
+    user_id: str = Field(..., description="Reference to User")
     session_id: str = Field(..., description="Reference to PerformanceSession")
     feedback_type: FeedbackType = Field(..., description="Type of feedback")
     message: str = Field(..., description="Main feedback message")
@@ -60,9 +61,9 @@ class Feedback(BaseModel):
     confidence_score: Optional[float] = Field(None, ge=0.0, le=1.0, description="AI confidence in feedback accuracy")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Feedback creation timestamp")
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    @field_serializer('created_at')
+    def serialize_dt(self, dt: datetime) -> str:
+        return dt.isoformat()
 
 
 class SkillMetrics(BaseModel):
@@ -79,6 +80,6 @@ class SkillMetrics(BaseModel):
     trend_direction: Optional[str] = Field(None, description="Improving, declining, or stable")
     calculated_at: datetime = Field(default_factory=datetime.utcnow, description="Metrics calculation timestamp")
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    @field_serializer('calculated_at')
+    def serialize_dt(self, dt: datetime) -> str:
+        return dt.isoformat()

@@ -89,6 +89,7 @@ class TestFeedback:
     def test_feedback_creation(self):
         feedback = Feedback(
             id="550e8400-e29b-41d4-a716-446655440500",
+            user_id="550e8400-e29b-41d4-a716-446655440000",
             session_id="550e8400-e29b-41d4-a716-446655440010",
             feedback_type="post_session",
             message="Great improvement in your intonation! Keep focusing on breath support.",
@@ -99,6 +100,7 @@ class TestFeedback:
         )
         
         assert feedback.id == "550e8400-e29b-41d4-a716-446655440500"
+        assert feedback.user_id == "550e8400-e29b-41d4-a716-446655440000"
         assert feedback.session_id == "550e8400-e29b-41d4-a716-446655440010"
         assert feedback.feedback_type == "post_session"
         assert feedback.message == "Great improvement in your intonation! Keep focusing on breath support."
@@ -112,6 +114,7 @@ class TestFeedback:
         with pytest.raises(ValueError):
             Feedback(
                 id="550e8400-e29b-41d4-a716-446655440500",
+                user_id="550e8400-e29b-41d4-a716-446655440000",
                 session_id="550e8400-e29b-41d4-a716-446655440010",
                 feedback_type="invalid_type",
                 message="Test message"

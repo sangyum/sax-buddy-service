@@ -1,14 +1,26 @@
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, status, Query, Depends
+from google.cloud.firestore_v1.async_client import AsyncClient
 from src.models.reference import ReferencePerformance, SkillLevelDefinition, SkillLevel
 from src.services.reference_service import ReferenceService
+from src.repositories.reference_repository import ReferenceRepository
+from src.dependencies import get_firestore_client
 
 router = APIRouter(prefix="/reference", tags=["Reference"])
 
 
-def get_reference_service() -> ReferenceService:
-    """Dependency to get ReferenceService instance"""
-    return ReferenceService()
+def get_reference_repository(
+    firestore_client: AsyncClient = Depends(get_firestore_client)
+) -> ReferenceRepository:
+    """Dependency to get ReferenceRepository instance with Firestore client"""
+    return ReferenceRepository(firestore_client)
+
+
+def get_reference_service(
+    reference_repository: ReferenceRepository = Depends(get_reference_repository)
+) -> ReferenceService:
+    """Dependency to get ReferenceService instance with repository injected"""
+    return ReferenceService(reference_repository)
 
 
 @router.get("/skill-levels", response_model=List[SkillLevelDefinition])
