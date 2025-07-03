@@ -39,6 +39,12 @@ jobs:
     - name: Configure Docker for Artifact Registry
       run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
 
+    - name: "Docker auth"
+      env:
+        GCP_REGION: ${{ secrets.GCP_REGION }}
+      run: |-
+        gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
     - name: Build and tag Docker image for Artifact Registry
       env:
         GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -47,13 +53,12 @@ jobs:
       run: |
         docker build -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}/sax-buddy-service:latest .
 
-    - name: Push Docker image to Artifact Registry
+    - name: Push image
       env:
         GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         GCP_REGION: ${{ secrets.GCP_REGION }}
-        SERVICE_NAME: sax-buddy-service
-      run: |
-        docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}/sax-buddy-service:latest
+        SERVICE_NAME: sax-buddy-service # You can change this service name
+      run: docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}/sax-buddy-service:latest
 
     - name: Deploy to Cloud Run
       env:
