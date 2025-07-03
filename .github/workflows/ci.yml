@@ -43,7 +43,7 @@ jobs:
       env:
         GCP_REGION: ${{ secrets.GCP_REGION }}
       run: |-
-        gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+        gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
     - name: Build and tag Docker image for Artifact Registry
       env:
