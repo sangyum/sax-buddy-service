@@ -27,4 +27,4 @@ EXPOSE 8000
 # and passed at runtime for security reasons.
 # Example: docker run -e GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/service-account-key.json" -e GAE_APPLICATION=true ...
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
