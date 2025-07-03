@@ -5,6 +5,7 @@ from src.models.reference import ReferencePerformance, SkillLevelDefinition, Ski
 from src.services.reference_service import ReferenceService
 from src.repositories.reference_repository import ReferenceRepository
 from src.dependencies import get_firestore_client
+from src.auth import AuthenticatedUser, require_auth
 
 router = APIRouter(prefix="/reference", tags=["Reference"])
 
@@ -25,7 +26,8 @@ def get_reference_service(
 
 @router.get("/skill-levels", response_model=List[SkillLevelDefinition])
 async def get_skill_level_definitions(
-    reference_service: ReferenceService = Depends(get_reference_service)
+    reference_service: ReferenceService = Depends(get_reference_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get skill level definitions"""
     try:
@@ -41,7 +43,8 @@ async def get_skill_level_definitions(
 async def get_reference_performances(
     exercise_id: Optional[str] = Query(None),
     skill_level: Optional[SkillLevel] = Query(None),
-    reference_service: ReferenceService = Depends(get_reference_service)
+    reference_service: ReferenceService = Depends(get_reference_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get reference performances"""
     try:

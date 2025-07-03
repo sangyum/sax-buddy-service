@@ -42,5 +42,21 @@ class ContentService:
     
     async def update_lesson(self, lesson_id: str, lesson_update: LessonUpdate) -> Optional[Lesson]:
         """Update lesson completion status"""
-        # TODO: Implement lesson update logic
-        raise NotImplementedError("Lesson update not implemented yet")
+        # Get existing lesson
+        existing_lesson = await self.content_repository.get_lesson_by_id(lesson_id)
+        if not existing_lesson:
+            return None
+        
+        # Apply updates
+        update_data = lesson_update.model_dump(exclude_unset=True)
+        
+        # Handle completed_at datetime string conversion
+        if "completed_at" in update_data and update_data["completed_at"]:
+            from datetime import datetime
+            update_data["completed_at"] = datetime.fromisoformat(update_data["completed_at"])
+        
+        # Create updated lesson with new values
+        updated_lesson = existing_lesson.model_copy(update=update_data)
+        
+        # Save to repository
+        return await self.content_repository.update_lesson(updated_lesson)

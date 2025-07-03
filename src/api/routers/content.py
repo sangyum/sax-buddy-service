@@ -6,6 +6,7 @@ from src.api.schemas.requests import LessonUpdate
 from src.services.content_service import ContentService
 from src.repositories.content_repository import ContentRepository
 from src.dependencies import get_firestore_client
+from src.auth import AuthenticatedUser, require_auth
 
 router = APIRouter(tags=["Content"])
 
@@ -29,7 +30,8 @@ async def list_exercises(
     exercise_type: Optional[ExerciseType] = Query(None),
     difficulty_level: Optional[DifficultyLevel] = Query(None),
     limit: int = Query(20, ge=1, le=100),
-    content_service: ContentService = Depends(get_content_service)
+    content_service: ContentService = Depends(get_content_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """List exercises"""
     try:
@@ -44,7 +46,8 @@ async def list_exercises(
 @router.get("/exercises/{exercise_id}", response_model=Exercise)
 async def get_exercise(
     exercise_id: str,
-    content_service: ContentService = Depends(get_content_service)
+    content_service: ContentService = Depends(get_content_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get exercise details"""
     try:
@@ -66,7 +69,8 @@ async def get_exercise(
 async def get_user_lesson_plans(
     user_id: str,
     is_active: bool = Query(True),
-    content_service: ContentService = Depends(get_content_service)
+    content_service: ContentService = Depends(get_content_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get user's lesson plans"""
     try:
@@ -81,7 +85,8 @@ async def get_user_lesson_plans(
 @router.post("/users/{user_id}/lesson-plans", response_model=LessonPlan, status_code=status.HTTP_201_CREATED)
 async def generate_lesson_plan(
     user_id: str,
-    content_service: ContentService = Depends(get_content_service)
+    content_service: ContentService = Depends(get_content_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Generate new lesson plan for user"""
     try:
@@ -96,7 +101,8 @@ async def generate_lesson_plan(
 @router.get("/lesson-plans/{plan_id}/lessons", response_model=List[Lesson])
 async def get_lessons_in_plan(
     plan_id: str,
-    content_service: ContentService = Depends(get_content_service)
+    content_service: ContentService = Depends(get_content_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get lessons in plan"""
     try:
@@ -111,7 +117,8 @@ async def get_lessons_in_plan(
 @router.get("/lessons/{lesson_id}", response_model=Lesson)
 async def get_lesson(
     lesson_id: str,
-    content_service: ContentService = Depends(get_content_service)
+    content_service: ContentService = Depends(get_content_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get lesson details"""
     try:
@@ -133,7 +140,8 @@ async def get_lesson(
 async def update_lesson(
     lesson_id: str, 
     lesson_update: LessonUpdate,
-    content_service: ContentService = Depends(get_content_service)
+    content_service: ContentService = Depends(get_content_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Update lesson completion status"""
     try:

@@ -5,6 +5,7 @@ from src.api.schemas.requests import UserCreate, UserProfileUpdate
 from src.services.user_service import UserService
 from src.repositories.user_repository import UserRepository
 from src.dependencies import get_firestore_client
+from src.auth import AuthenticatedUser, require_auth
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -26,7 +27,8 @@ def get_user_service(
 @router.post("", response_model=User, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_data: UserCreate,
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Create new user"""
     try:
@@ -41,7 +43,8 @@ async def create_user(
 @router.get("/{user_id}", response_model=User)
 async def get_user(
     user_id: str,
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get user by ID"""
     try:
@@ -62,7 +65,8 @@ async def get_user(
 @router.get("/{user_id}/profile", response_model=UserProfile)
 async def get_user_profile(
     user_id: str,
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get user profile"""
     try:
@@ -84,7 +88,8 @@ async def get_user_profile(
 async def update_user_profile(
     user_id: str, 
     profile_data: UserProfileUpdate,
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Update user profile"""
     try:
@@ -105,7 +110,8 @@ async def update_user_profile(
 @router.get("/{user_id}/progress", response_model=UserProgress)
 async def get_user_progress(
     user_id: str,
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get user progress"""
     try:

@@ -2,17 +2,52 @@
 
 REST backend service for a multi-agent AI application for saxophone learning that moves beyond traditional discrete assessments. This system continuously monitors user performance through real-time audio analysis, leveraging specialized digital signal processing (DSP) to extract granular data on intonation, rhythm, articulation, and dynamics. The backend processes structured performance data from mobile devices to provide adaptive feedback and generate personalized lesson plans.
 
+## 🔐 Security Features
+
+- **JWT Authentication**: All API endpoints secured with Firebase ID token verification
+- **Firebase Integration**: Complete user authentication and Firestore database integration
+- **Role-based Access**: Custom claims support for user permissions and access control
+- **Middleware Protection**: Automatic request interception with configurable excluded paths
+
 ## Quick Start
 
 ```bash
 # Install dependencies
 uv sync
 
-# Run tests
-uv run pytest tests/ -v
+# Set up Firebase credentials (optional for development)
+export FIREBASE_SERVICE_ACCOUNT_KEY=path/to/serviceAccountKey.json
 
-# Start development server
-uv run python run_server.py
+# Run unit tests (63 tests)
+uv run pytest tests/unit -v
+
+# Run integration tests with Firestore emulator
+uv run pytest tests/integration -v
+
+# Start development server with JWT authentication
+uv run python src/main.py
+```
+
+## 🛡️ Authentication Setup
+
+### Firebase Configuration
+
+1. Create a Firebase project at https://console.firebase.google.com
+2. Enable Authentication and Firestore Database
+3. Download service account key (for local development)
+4. Set environment variable: `FIREBASE_SERVICE_ACCOUNT_KEY=path/to/key.json`
+
+### API Authentication
+
+All API endpoints require authentication except:
+- `/docs` - API documentation
+- `/health` - Health check
+- `/` - Root endpoint
+
+**Request Format:**
+```bash
+curl -H "Authorization: Bearer <firebase-id-token>" \
+     https://api.saxbuddy.com/v1/users/123
 ```
 
 ## Architecture Overview
@@ -49,6 +84,77 @@ The backend implements a comprehensive domain model supporting:
 ### 🎯 Reference Standards
 - `ReferencePerformance` - Skill-level appropriate targets
 - `SkillLevelDefinition` - Standardized progression criteria
+
+### 🔐 Authentication Models
+- `JWTTokenData` - Firebase ID token payload with user claims
+- `AuthenticatedUser` - Verified user context with permissions
+- `AuthErrorResponse` - Standardized authentication error responses
+
+## 📡 API Endpoints
+
+All endpoints secured with JWT authentication:
+
+### Users (`/v1/users`)
+- `POST /users` - Create user account
+- `GET /users/{id}` - Get user details  
+- `GET /users/{id}/profile` - Get user profile
+- `PUT /users/{id}/profile` - Update profile
+- `GET /users/{id}/progress` - Get learning progress
+
+### Performance (`/v1/performance`)
+- `POST /performance/sessions` - Start practice session
+- `GET /performance/sessions/{id}` - Get session details
+- `PATCH /performance/sessions/{id}` - Update session
+- `POST /performance/sessions/{id}/metrics` - Submit performance data
+- `GET /performance/sessions/{id}/metrics` - Get session metrics
+
+### Content (`/v1`)
+- `GET /exercises` - List practice exercises
+- `GET /exercises/{id}` - Get exercise details
+- `GET /users/{id}/lesson-plans` - Get user's lesson plans
+- `POST /users/{id}/lesson-plans` - Generate new lesson plan
+- `GET /lesson-plans/{id}/lessons` - Get lessons in plan
+- `GET /lessons/{id}` - Get lesson details
+- `PATCH /lessons/{id}` - Update lesson completion
+
+### Assessment (`/v1`)
+- `GET /users/{id}/assessments` - Get user assessments
+- `POST /users/{id}/assessments` - Trigger formal assessment
+- `GET /performance/sessions/{id}/feedback` - Get session feedback
+- `GET /users/{id}/skill-metrics` - Get skill metrics
+
+### Reference (`/v1/reference`)
+- `GET /reference/skill-levels` - Get skill level definitions
+- `GET /reference/performances` - Get reference performances
+
+## 🧪 Testing
+
+### Test Structure
+```
+tests/
+├── unit/                    # 63 unit tests
+│   ├── models/             # Domain model validation (45 tests)
+│   └── auth/               # Authentication tests (18 tests)
+└── integration/            # Integration tests with Firestore emulator
+    ├── test_assessment_repository.py    # 25 tests
+    ├── test_user_repository.py         # 15 tests  
+    ├── test_performance_repository.py  # 15 tests
+    ├── test_content_repository.py      # 8 tests
+    └── test_reference_repository.py    # 12 tests
+```
+
+### Running Tests
+```bash
+# All unit tests
+uv run pytest tests/unit -v
+
+# Specific test modules
+uv run pytest tests/unit/auth -v
+uv run pytest tests/unit/models -v
+
+# Integration tests (requires Firestore emulator)
+uv run pytest tests/integration -v
+```
 
 # Main Components for Adaptive Assessment
 

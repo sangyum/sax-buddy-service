@@ -1,11 +1,13 @@
 from typing import List
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile
 from google.cloud.firestore_v1.async_client import AsyncClient
+from google.cloud.storage.bucket import Bucket
 from src.models.performance import PerformanceSession, PerformanceMetrics
 from src.api.schemas.requests import PerformanceSessionCreate, PerformanceSessionUpdate, PerformanceMetricsCreate
 from src.services.performance_service import PerformanceService
 from src.repositories.performance_repository import PerformanceRepository
-from src.dependencies import get_firestore_client
+from src.dependencies import get_firestore_client, get_firestore_bucket
+from src.auth import AuthenticatedUser, require_auth
 
 router = APIRouter(prefix="/performance", tags=["Performance"])
 
@@ -16,18 +18,19 @@ def get_performance_repository(
     """Dependency to get PerformanceRepository instance with Firestore client"""
     return PerformanceRepository(firestore_client)
 
-
 def get_performance_service(
-    performance_repository: PerformanceRepository = Depends(get_performance_repository)
+    performance_repository: PerformanceRepository = Depends(get_performance_repository),
+    storage_bucket: Bucket = Depends(get_firestore_bucket)
 ) -> PerformanceService:
-    """Dependency to get PerformanceService instance with repository injected"""
-    return PerformanceService(performance_repository)
+    """Dependency to get PerformanceService instance with repository and storage bucket injected"""
+    return PerformanceService(performance_repository, storage_bucket)
 
 
 @router.post("/sessions", response_model=PerformanceSession, status_code=status.HTTP_201_CREATED)
 async def create_session(
     session_data: PerformanceSessionCreate,
-    performance_service: PerformanceService = Depends(get_performance_service)
+    performance_service: PerformanceService = Depends(get_performance_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Start new practice session"""
     try:
@@ -42,7 +45,8 @@ async def create_session(
 @router.get("/sessions/{session_id}", response_model=PerformanceSession)
 async def get_session(
     session_id: str,
-    performance_service: PerformanceService = Depends(get_performance_service)
+    performance_service: PerformanceService = Depends(get_performance_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get session details"""
     try:
@@ -64,7 +68,8 @@ async def get_session(
 async def update_session(
     session_id: str, 
     session_update: PerformanceSessionUpdate,
-    performance_service: PerformanceService = Depends(get_performance_service)
+    performance_service: PerformanceService = Depends(get_performance_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Update session (e.g., end session)"""
     try:
@@ -86,7 +91,9 @@ async def update_session(
 async def submit_metrics(
     session_id: str, 
     metrics_list: List[PerformanceMetricsCreate],
-    performance_service: PerformanceService = Depends(get_performance_service)
+    performance_service: PerformanceService = Depends(get_performance_service),
+    current_user: AuthenticatedUser = Depends(require_auth),
+
 ):
     """Submit performance metrics from mobile DSP"""
     try:
@@ -97,11 +104,30 @@ async def submit_metrics(
             detail="Metrics submission not implemented yet"
         )
 
+@router.post("/sessions/{session_id}/file", response_model=str, status_code=status.HTTP_201_CREATED)
+async def upload_performance(
+    session_id: str, 
+    file: UploadFile,
+    performance_service: PerformanceService = Depends(get_performance_service),
+    current_user: AuthenticatedUser = Depends(require_auth),
+
+):
+    """Upload performance recording"""
+    try:
+        contents = await file.read()
+        return await performance_service.upload_performance(session_id, file.content_type, contents)
+    except NotImplementedError:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Metrics submission not implemented yet"
+        )
+
 
 @router.get("/sessions/{session_id}/metrics", response_model=List[PerformanceMetrics])
 async def get_session_metrics(
     session_id: str,
-    performance_service: PerformanceService = Depends(get_performance_service)
+    performance_service: PerformanceService = Depends(get_performance_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get session metrics"""
     try:

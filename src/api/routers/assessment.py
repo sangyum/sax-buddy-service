@@ -6,6 +6,7 @@ from src.api.schemas.requests import AssessmentTrigger
 from src.services.assessment_service import AssessmentService
 from src.repositories.assessment_repository import AssessmentRepository
 from src.dependencies import get_firestore_client
+from src.auth import AuthenticatedUser, require_auth
 
 router = APIRouter(tags=["Assessment"])
 
@@ -28,7 +29,8 @@ def get_assessment_service(
 async def get_user_assessments(
     user_id: str,
     limit: int = Query(10, ge=1, le=100),
-    assessment_service: AssessmentService = Depends(get_assessment_service)
+    assessment_service: AssessmentService = Depends(get_assessment_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get user's formal assessments"""
     try:
@@ -44,7 +46,8 @@ async def get_user_assessments(
 async def trigger_assessment(
     user_id: str, 
     trigger_data: AssessmentTrigger,
-    assessment_service: AssessmentService = Depends(get_assessment_service)
+    assessment_service: AssessmentService = Depends(get_assessment_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Trigger formal assessment"""
     try:
@@ -59,7 +62,8 @@ async def trigger_assessment(
 @router.get("/performance/sessions/{session_id}/feedback", response_model=Feedback)
 async def get_session_feedback(
     session_id: str,
-    assessment_service: AssessmentService = Depends(get_assessment_service)
+    assessment_service: AssessmentService = Depends(get_assessment_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get session feedback"""
     try:
@@ -81,7 +85,8 @@ async def get_session_feedback(
 async def get_user_skill_metrics(
     user_id: str,
     period_days: int = Query(30, ge=1),
-    assessment_service: AssessmentService = Depends(get_assessment_service)
+    assessment_service: AssessmentService = Depends(get_assessment_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
 ):
     """Get user's current skill metrics"""
     try:

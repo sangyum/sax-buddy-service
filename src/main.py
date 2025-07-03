@@ -2,10 +2,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
-from firebase_admin import credentials, firestore_async
+from firebase_admin import credentials, firestore_async, storage
 import os
 from src.api.routers import users, performance, content, assessment, reference
 from src.api.openapi import custom_openapi
+from src.auth import JWTMiddleware
+from dotenv import load_dotenv
+
+load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,11 +32,13 @@ async def lifespan(app: FastAPI):
         
         # Store Firestore async client in app state
         app.state.firestore_client = firestore_async.client()
+        app.state.bucket = storage.bucket(os.getenv("FIREBASE_STORAGE_BUCKET", "sax-buddy"))
         print("Firebase Admin SDK initialized successfully")
         
     except Exception as e:
         print(f"Warning: Failed to initialize Firebase Admin SDK: {e}")
         app.state.firestore_client = None
+        app.state.bucket = None
     
     yield
     
@@ -67,6 +73,21 @@ app = FastAPI(
     ],
     docs_url="/docs",
     redoc_url="/redoc"
+)
+
+# JWT authentication middleware
+app.add_middleware(
+    JWTMiddleware,
+    excluded_paths=[
+        "/docs",
+        "/redoc", 
+        "/openapi.json",
+        "/health",
+        "/favicon.ico",
+        "/",
+        "/swagger"
+    ],
+    require_auth_by_default=True
 )
 
 # CORS middleware for mobile app access
