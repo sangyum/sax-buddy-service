@@ -1,0 +1,35 @@
+# Ignore Git-related files
+.git
+.gitignore
+
+# Ignore Python-related files and directories
+.venv/
+__pycache__/
+*.pyc
+*.log
+# uv.lock
+# pyproject.toml
+*.egg-info/
+
+# Ignore development and documentation files
+README.md
+CLAUDE.md
+GEMINI.md
+tests/
+.pytest_cache/
+.vscode/
+
+# Ignore Firebase-related local files (if not needed in the final image)
+.firebaserc
+firebase.json
+firestore-debug.log
+firestore.indexes.json
+firestore.rules
+storage.rules
+serviceAccountKey.json
+
+# Ignore generated files
+openapi.yaml
+
+# Ignore local development scripts
+run_server.py
