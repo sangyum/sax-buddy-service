@@ -1,7 +1,9 @@
 from datetime import datetime
 from enum import Enum
 from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field, field_validator, field_serializer, ConfigDict
+from pydantic import Field, field_validator, ConfigDict
+
+from src.models.base import BaseModel
 
 
 class SkillLevel(str, Enum):
@@ -22,9 +24,6 @@ class ReferencePerformance(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Reference creation timestamp")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
 
-    @field_serializer('created_at', 'updated_at')
-    def serialize_dt(self, dt: datetime) -> str:
-        return dt.isoformat()
 
 
 class SkillLevelDefinition(BaseModel):
@@ -39,7 +38,3 @@ class SkillLevelDefinition(BaseModel):
     estimated_hours_to_achieve: Optional[int] = Field(None, description="Typical practice hours to reach this level")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Definition creation timestamp")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
-
-    @field_serializer('created_at', 'updated_at')
-    def serialize_dt(self, dt: datetime) -> str:
-        return dt.isoformat()

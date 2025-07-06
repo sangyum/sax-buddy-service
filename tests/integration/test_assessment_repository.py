@@ -1,11 +1,8 @@
 import pytest
 import pytest_asyncio
-import asyncio
-import os
 from datetime import datetime, timedelta, timezone
 from typing import AsyncGenerator
 from google.cloud.firestore_v1.async_client import AsyncClient
-from google.cloud.firestore_v1 import AsyncClient as FirestoreAsyncClient
 
 from src.repositories.assessment_repository import AssessmentRepository
 from src.models.assessment import (
@@ -19,38 +16,6 @@ from src.models.assessment import (
 )
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest_asyncio.fixture(scope="function")
-async def firestore_client() -> AsyncGenerator[AsyncClient, None]:
-    """Initialize Firestore client for emulator testing."""
-    # Set environment variables for Firestore emulator
-    os.environ["FIRESTORE_EMULATOR_HOST"] = "127.0.0.1:8080"
-    os.environ["GOOGLE_CLOUD_PROJECT"] = "demo-test"
-    
-    # Initialize Firestore client
-    client = FirestoreAsyncClient(project="demo-test")
-    
-    try:
-        yield client
-    finally:
-        # Clean up client resources properly
-        try:
-            if hasattr(client, '_firestore_api') and client._firestore_api:
-                if hasattr(client._firestore_api, 'transport'):
-                    transport = client._firestore_api.transport
-                    if hasattr(transport, 'close') and asyncio.iscoroutinefunction(transport.close):
-                        await transport.close()
-                    elif hasattr(transport, 'close'):
-                        transport.close()
-        except Exception:
-            pass
 
 
 @pytest_asyncio.fixture

@@ -1,5 +1,4 @@
 from typing import List, Optional
-from datetime import datetime
 from google.cloud.firestore_v1.async_client import AsyncClient
 from google.cloud.firestore_v1.async_collection import AsyncCollectionReference
 from src.models.content import Exercise, LessonPlan, Lesson, ExerciseType, DifficultyLevel
@@ -18,11 +17,7 @@ class ContentRepository:
     async def create_exercise(self, exercise: Exercise) -> Exercise:
         """Create a new exercise"""
         # Convert Pydantic model to dict for Firestore
-        exercise_data = exercise.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        exercise_data["created_at"] = exercise.created_at.isoformat()
-        exercise_data["updated_at"] = exercise.updated_at.isoformat()
+        exercise_data = exercise.to_dict()
         
         # Create document in Firestore
         doc_ref = await self._collection.add(exercise_data)
@@ -45,13 +40,8 @@ class ContentRepository:
             
         data["id"] = doc.id
         
-        # Convert ISO strings back to datetime objects
-        if "created_at" in data and data["created_at"]:
-            data["created_at"] = datetime.fromisoformat(data["created_at"])
-        if "updated_at" in data and data["updated_at"]:
-            data["updated_at"] = datetime.fromisoformat(data["updated_at"])
         
-        return Exercise(**data)
+        return Exercise.from_dict(data)
     
     async def list_exercises(
         self, 
@@ -81,13 +71,8 @@ class ContentRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
             
-            exercises.append(Exercise(**data))
+            exercises.append(Exercise.from_dict(data))
         
         return exercises
     
@@ -107,13 +92,8 @@ class ContentRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
             
-            exercises.append(Exercise(**data))
+            exercises.append(Exercise.from_dict(data))
         
         return exercises
     
@@ -133,23 +113,14 @@ class ContentRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
             
-            exercises.append(Exercise(**data))
+            exercises.append(Exercise.from_dict(data))
         
         return exercises
     
     async def update_exercise(self, exercise: Exercise) -> Exercise:
         """Update an existing exercise"""
-        exercise_data = exercise.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        exercise_data["created_at"] = exercise.created_at.isoformat()
-        exercise_data["updated_at"] = exercise.updated_at.isoformat()
+        exercise_data = exercise.to_dict()
         
         # Remove the ID from data since it's used as document ID
         doc_id = exercise_data.pop("id")
@@ -171,14 +142,7 @@ class ContentRepository:
     async def create_lesson_plan(self, lesson_plan: LessonPlan) -> LessonPlan:
         """Create a new lesson plan"""
         # Convert Pydantic model to dict for Firestore
-        lesson_plan_data = lesson_plan.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        lesson_plan_data["generated_at"] = lesson_plan.generated_at.isoformat()
-        if lesson_plan.completed_at:
-            lesson_plan_data["completed_at"] = lesson_plan.completed_at.isoformat()
-        if lesson_plan.next_formal_assessment_due:
-            lesson_plan_data["next_formal_assessment_due"] = lesson_plan.next_formal_assessment_due.isoformat()
+        lesson_plan_data = lesson_plan.to_dict()
         
         # Create document in Firestore
         doc_ref = await self._collection.add(lesson_plan_data)
@@ -201,15 +165,8 @@ class ContentRepository:
             
         data["id"] = doc.id
         
-        # Convert ISO strings back to datetime objects
-        if "generated_at" in data and data["generated_at"]:
-            data["generated_at"] = datetime.fromisoformat(data["generated_at"])
-        if "completed_at" in data and data["completed_at"]:
-            data["completed_at"] = datetime.fromisoformat(data["completed_at"])
-        if "next_formal_assessment_due" in data and data["next_formal_assessment_due"]:
-            data["next_formal_assessment_due"] = datetime.fromisoformat(data["next_formal_assessment_due"])
         
-        return LessonPlan(**data)
+        return LessonPlan.from_dict(data)
     
     async def get_lesson_plans_by_user_id(
         self, 
@@ -234,15 +191,8 @@ class ContentRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "generated_at" in data and data["generated_at"]:
-                data["generated_at"] = datetime.fromisoformat(data["generated_at"])
-            if "completed_at" in data and data["completed_at"]:
-                data["completed_at"] = datetime.fromisoformat(data["completed_at"])
-            if "next_formal_assessment_due" in data and data["next_formal_assessment_due"]:
-                data["next_formal_assessment_due"] = datetime.fromisoformat(data["next_formal_assessment_due"])
             
-            plans.append(LessonPlan(**data))
+            plans.append(LessonPlan.from_dict(data))
         
         return plans
     
@@ -262,28 +212,14 @@ class ContentRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "generated_at" in data and data["generated_at"]:
-                data["generated_at"] = datetime.fromisoformat(data["generated_at"])
-            if "completed_at" in data and data["completed_at"]:
-                data["completed_at"] = datetime.fromisoformat(data["completed_at"])
-            if "next_formal_assessment_due" in data and data["next_formal_assessment_due"]:
-                data["next_formal_assessment_due"] = datetime.fromisoformat(data["next_formal_assessment_due"])
             
-            return LessonPlan(**data)
+            return LessonPlan.from_dict(data)
         
         return None
     
     async def update_lesson_plan(self, lesson_plan: LessonPlan) -> LessonPlan:
         """Update an existing lesson plan"""
-        lesson_plan_data = lesson_plan.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        lesson_plan_data["generated_at"] = lesson_plan.generated_at.isoformat()
-        if lesson_plan.completed_at:
-            lesson_plan_data["completed_at"] = lesson_plan.completed_at.isoformat()
-        if lesson_plan.next_formal_assessment_due:
-            lesson_plan_data["next_formal_assessment_due"] = lesson_plan.next_formal_assessment_due.isoformat()
+        lesson_plan_data = lesson_plan.to_dict()
         
         # Remove the ID from data since it's used as document ID
         doc_id = lesson_plan_data.pop("id")
@@ -305,12 +241,7 @@ class ContentRepository:
     async def create_lesson(self, lesson: Lesson) -> Lesson:
         """Create a new lesson"""
         # Convert Pydantic model to dict for Firestore
-        lesson_data = lesson.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        lesson_data["created_at"] = lesson.created_at.isoformat()
-        if lesson.completed_at:
-            lesson_data["completed_at"] = lesson.completed_at.isoformat()
+        lesson_data = lesson.to_dict()
         
         # Create document in Firestore
         doc_ref = await self._collection.add(lesson_data)
@@ -333,13 +264,8 @@ class ContentRepository:
             
         data["id"] = doc.id
         
-        # Convert ISO strings back to datetime objects
-        if "created_at" in data and data["created_at"]:
-            data["created_at"] = datetime.fromisoformat(data["created_at"])
-        if "completed_at" in data and data["completed_at"]:
-            data["completed_at"] = datetime.fromisoformat(data["completed_at"])
         
-        return Lesson(**data)
+        return Lesson.from_dict(data)
     
     async def get_lessons_by_plan_id(self, plan_id: str) -> List[Lesson]:
         """Get all lessons in a lesson plan"""
@@ -356,13 +282,8 @@ class ContentRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "completed_at" in data and data["completed_at"]:
-                data["completed_at"] = datetime.fromisoformat(data["completed_at"])
             
-            lessons.append(Lesson(**data))
+            lessons.append(Lesson.from_dict(data))
         
         return lessons
     
@@ -404,13 +325,8 @@ class ContentRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "completed_at" in data and data["completed_at"]:
-                data["completed_at"] = datetime.fromisoformat(data["completed_at"])
             
-            lessons.append(Lesson(**data))
+            lessons.append(Lesson.from_dict(data))
         
         return lessons
     
@@ -430,24 +346,14 @@ class ContentRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "completed_at" in data and data["completed_at"]:
-                data["completed_at"] = datetime.fromisoformat(data["completed_at"])
             
-            return Lesson(**data)
+            return Lesson.from_dict(data)
         
         return None
     
     async def update_lesson(self, lesson: Lesson) -> Lesson:
         """Update an existing lesson"""
-        lesson_data = lesson.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        lesson_data["created_at"] = lesson.created_at.isoformat()
-        if lesson.completed_at:
-            lesson_data["completed_at"] = lesson.completed_at.isoformat()
+        lesson_data = lesson.to_dict()
         
         # Remove the ID from data since it's used as document ID
         doc_id = lesson_data.pop("id")
@@ -499,13 +405,8 @@ class ContentRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
             
-            exercises.append(Exercise(**data))
+            exercises.append(Exercise.from_dict(data))
         
         return exercises
     
@@ -554,3 +455,60 @@ class ContentRepository:
             count += 1
         
         return count
+    
+    async def search_exercises(self, keyword: str) -> List[Exercise]:
+        """Search exercises by keyword in title and description"""
+        if not keyword:
+            return []
+        
+        # Since Firestore doesn't support full-text search, we'll get all active exercises
+        # and filter them in memory. For production, consider using Algolia or Elasticsearch.
+        query = self._collection.where("is_active", "==", True)
+        docs = query.stream()
+        exercises = []
+        
+        keyword_lower = keyword.lower()
+        
+        async for doc in docs:
+            data = doc.to_dict()
+            if data is None:
+                continue
+                
+            # Check if keyword is in title or description
+            title = data.get("title", "").lower()
+            description = data.get("description", "").lower()
+            
+            if keyword_lower in title or keyword_lower in description:
+                data["id"] = doc.id
+                
+                
+                exercises.append(Exercise.from_dict(data))
+        
+        # Sort by relevance (title matches first, then by creation date)
+        def sort_key(exercise):
+            title_match = keyword_lower in exercise.title.lower()
+            return (not title_match, -exercise.created_at.timestamp())
+        
+        exercises.sort(key=sort_key)
+        return exercises
+    
+    async def get_active_exercises(self, limit: int = 50, offset: int = 0) -> List[Exercise]:
+        """Get all active exercises"""
+        query = self._collection.where("is_active", "==", True)
+        query = query.order_by("created_at", direction="DESCENDING")
+        query = query.limit(limit).offset(offset)
+        
+        docs = query.stream()
+        exercises = []
+        
+        async for doc in docs:
+            data = doc.to_dict()
+            if data is None:
+                continue
+                
+            data["id"] = doc.id
+            
+            
+            exercises.append(Exercise.from_dict(data))
+        
+        return exercises

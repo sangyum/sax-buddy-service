@@ -1,11 +1,8 @@
 import pytest
 import pytest_asyncio
-import asyncio
-import os
 from datetime import datetime, timedelta, timezone
 from typing import AsyncGenerator
 from google.cloud.firestore_v1.async_client import AsyncClient
-from google.cloud.firestore_v1 import AsyncClient as FirestoreAsyncClient
 
 from src.repositories.performance_repository import PerformanceRepository
 from src.models.performance import (
@@ -15,38 +12,6 @@ from src.models.performance import (
 )
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest_asyncio.fixture(scope="function")
-async def firestore_client() -> AsyncGenerator[AsyncClient, None]:
-    """Initialize Firestore client for emulator testing."""
-    # Set environment variables for Firestore emulator
-    os.environ["FIRESTORE_EMULATOR_HOST"] = "127.0.0.1:8080"
-    os.environ["GOOGLE_CLOUD_PROJECT"] = "demo-test"
-    
-    # Initialize Firestore client
-    client = FirestoreAsyncClient(project="demo-test")
-    
-    try:
-        yield client
-    finally:
-        # Clean up client resources properly
-        try:
-            if hasattr(client, '_firestore_api') and client._firestore_api:
-                if hasattr(client._firestore_api, 'transport'):
-                    transport = client._firestore_api.transport
-                    if hasattr(transport, 'close') and asyncio.iscoroutinefunction(transport.close):
-                        await transport.close()
-                    elif hasattr(transport, 'close'):
-                        transport.close()
-        except Exception:
-            pass
 
 
 @pytest_asyncio.fixture
@@ -397,8 +362,8 @@ class TestBusinessLogicQueries:
         # Get summary
         summary = await performance_repository.get_session_summary_by_user_id("user-123")
         
-        assert summary["total_sessions"] == 2  # Only completed sessions
-        assert summary["total_minutes"] == 75  # 30 + 45
+        assert summary.total_sessions == 2  # Only completed sessions
+        assert summary.total_minutes == 75  # 30 + 45
 
     @pytest.mark.asyncio
     async def test_get_performance_trend_by_user_id(
@@ -436,7 +401,70 @@ class TestBusinessLogicQueries:
         
         # Should only include recent session (within 7 days)
         assert len(trend) == 1
-        assert trend[0]["avg_intonation"] == 85.0
+        assert trend[0].avg_intonation == 85.0
+
+    @pytest.mark.asyncio
+    async def test_get_session_statistics_by_user_id(
+        self, 
+        performance_repository: PerformanceRepository,
+        sample_performance_session: PerformanceSession
+    ):
+        """Test getting comprehensive session statistics for a user."""
+        from datetime import timedelta, timezone
+        
+        now = datetime.now(timezone.utc)
+        
+        # Create sessions with different statuses and durations
+        completed_session_1 = sample_performance_session.model_copy()
+        completed_session_1.status = SessionStatus.COMPLETED
+        completed_session_1.started_at = now - timedelta(hours=2)
+        completed_session_1.ended_at = now - timedelta(hours=1, minutes=30)  # 30 min session
+        
+        completed_session_2 = sample_performance_session.model_copy()
+        completed_session_2.status = SessionStatus.COMPLETED
+        completed_session_2.started_at = now - timedelta(days=1, hours=1)
+        completed_session_2.ended_at = now - timedelta(days=1, hours=0, minutes=15)  # 45 min session
+        
+        in_progress_session = sample_performance_session.model_copy()
+        in_progress_session.status = SessionStatus.IN_PROGRESS
+        in_progress_session.started_at = now - timedelta(minutes=10)
+        in_progress_session.ended_at = None  # Still in progress
+        
+        cancelled_session = sample_performance_session.model_copy()
+        cancelled_session.status = SessionStatus.CANCELLED
+        cancelled_session.started_at = now - timedelta(days=2)
+        cancelled_session.ended_at = now - timedelta(days=2, hours=-1)  # 1 hour but cancelled
+        
+        # Create all sessions
+        await performance_repository.create_session(completed_session_1)
+        await performance_repository.create_session(completed_session_2)
+        await performance_repository.create_session(in_progress_session)
+        await performance_repository.create_session(cancelled_session)
+        
+        # Get statistics
+        stats = await performance_repository.get_session_statistics_by_user_id("user-123")
+        
+        # Verify basic counts
+        assert stats.total_sessions == 4
+        assert stats.completed_sessions == 2
+        assert stats.in_progress_sessions == 1
+        assert stats.cancelled_sessions == 1
+        
+        # Verify completion rate
+        assert stats.completion_rate == 0.5  # 2/4
+        
+        # Verify duration calculations (30 min + 45 min = 75 min = 4500 seconds)
+        assert stats.total_duration_seconds == 4500.0
+        assert stats.average_duration_seconds == 2250.0  # 4500/2
+        assert stats.longest_session_seconds == 2700.0  # 45 minutes
+        
+        # Verify convenience properties
+        assert stats.total_duration_minutes == 75.0
+        assert stats.average_duration_minutes == 37.5
+        assert stats.longest_session_minutes == 45.0
+        
+        # Verify practice days (sessions on 3 different days)
+        assert stats.total_practice_days == 3
 
 
 class TestDataConsistency:

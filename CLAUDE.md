@@ -2,6 +2,33 @@
 
 REST backend service to support Sax Buddy (mobile application for iOS/Android)
 
+## Development Practice
+
+### TDD Workflow
+
+1. **Act as a pairing partner** - Do not commit anything until explicit consent is given
+2. **Test-Driven Development (TDD)** - Follow the Red-Green-Refactor cycle:
+   * **Red**: Write a failing test first
+   * **Green**: Implement minimal code to make the test pass
+   * **Refactor**: Clean up code while keeping tests green
+3. **Always prefer strongly-typed classes over dictionaries** for return types and data structures
+4. **Run tests after every change**: `uv run pytest tests/ -v`
+5. **Update documentation** to reflect architectural changes
+
+### Development Environment Setup
+
+**Firebase Emulator for Development:**
+- **Start Emulator**: `firebase emulators:start --only firestore`
+- **Development Configuration**: `ENVIRONMENT=development` in `.env`
+- **Authentication Bypass**: JWT auth disabled in development mode
+- **Emulator UI**: http://127.0.0.1:4000/firestore
+
+**Test Categories:**
+- **Unit Tests** (93 tests): Domain models, business logic, authentication
+- **Integration Tests** (88+ tests): Repository operations with Firestore emulator
+- **Test Command**: `uv run pytest tests/unit/auth/ -v` (auth-specific)
+- **All Tests**: `uv run pytest tests/ -v`
+
 ## Frameworks
 
 * **Python 3.11+** - Modern Python with type hints and async support
@@ -39,6 +66,11 @@ src/
 │   ├── assessment.py      # FormalAssessment, Feedback, SkillMetrics
 │   └── reference.py       # ReferencePerformance, SkillLevelDefinition
 ├── repositories/          # Data access layer (Firestore integration)
+│   ├── content_repository.py    # Exercise, LessonPlan, Lesson operations
+│   ├── performance_repository.py # PerformanceSession, PerformanceMetrics, analytics
+│   ├── assessment_repository.py  # FormalAssessment, Feedback, SkillMetrics
+│   ├── user_repository.py       # User, UserProfile, UserProgress operations
+│   └── reference_repository.py  # ReferencePerformance, SkillLevelDefinition
 ├── services/              # Business logic layer
 ├── dependencies.py        # FastAPI dependency providers
 └── main.py               # Application entry point with JWT middleware
@@ -64,6 +96,9 @@ tests/
 ### Performance Domain
 - **PerformanceSession**: Practice session containers with duration and status tracking
 - **PerformanceMetrics**: Time-series performance data from mobile DSP processing
+- **SessionSummary**: Aggregated session data (total sessions, total minutes) for completed sessions
+- **SessionStatistics**: Comprehensive session analytics with breakdowns by status, durations, and practice patterns
+- **PerformanceTrendPoint**: Time-series performance averages across all skill dimensions
 
 ### Content Domain
 - **Exercise**: Practice exercises (scales, arpeggios, technical, etudes, songs, long-tone)
@@ -116,9 +151,14 @@ tests/
 - `PATCH /performance/sessions/{session_id}` - Update session
 - `POST /performance/sessions/{session_id}/metrics` - Submit performance metrics
 - `GET /performance/sessions/{session_id}/metrics` - Get session metrics
+- `GET /users/{user_id}/performance/statistics` - Get comprehensive session statistics
+- `GET /users/{user_id}/performance/summary` - Get session summary (completed sessions)
+- `GET /users/{user_id}/performance/trend` - Get performance trend over time
 
 ### Content API (`/v1`)
 - `GET /exercises` - List exercises with filters
+- `GET /exercises/search?q={keyword}` - Search exercises by keyword
+- `GET /exercises/active` - Get only active exercises
 - `GET /exercises/{exercise_id}` - Get exercise details
 - `GET /users/{user_id}/lesson-plans` - Get user's lesson plans
 - `POST /users/{user_id}/lesson-plans` - Generate new lesson plan

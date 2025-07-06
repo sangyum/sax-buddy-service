@@ -4,10 +4,11 @@ from typing import Optional, List
 from fastapi import Request
 from fastapi.security import HTTPBearer
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from .firebase_auth import verify_firebase_token, extract_token_from_header
 from .models import AuthenticatedUser, AuthErrorResponse
 from .exceptions import AuthenticationError, MissingTokenError
+from .utils import is_development_mode
 
 
 class JWTMiddleware(BaseHTTPMiddleware):
@@ -34,9 +35,11 @@ class JWTMiddleware(BaseHTTPMiddleware):
             "/health",
             "/favicon.ico"
         ]
-        self.require_auth_by_default = require_auth_by_default
+        # Disable auth in development mode
+        self.is_development = is_development_mode()
+        self.require_auth_by_default = require_auth_by_default and not self.is_development
     
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next) -> Response:
         """Process request through JWT authentication
         
         Args:
@@ -52,6 +55,10 @@ class JWTMiddleware(BaseHTTPMiddleware):
         
         # Skip authentication for OPTIONS requests (CORS preflight)
         if request.method == "OPTIONS":
+            return await call_next(request)
+        
+        # Skip authentication entirely in development mode
+        if self.is_development:
             return await call_next(request)
         
         try:

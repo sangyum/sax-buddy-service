@@ -1,5 +1,4 @@
 from typing import List, Optional
-from datetime import datetime
 from google.cloud.firestore_v1.async_client import AsyncClient
 from google.cloud.firestore_v1.async_collection import AsyncCollectionReference
 from src.models.user import User, UserProfile, UserProgress
@@ -17,12 +16,8 @@ class UserRepository:
     # User CRUD operations
     async def create_user(self, user: User) -> User:
         """Create a new user"""
-        # Convert Pydantic model to dict for Firestore
-        user_data = user.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        user_data["created_at"] = user.created_at.isoformat()
-        user_data["updated_at"] = user.updated_at.isoformat()
+        # Convert model to dict for Firestore
+        user_data = user.to_dict()
         
         # Create document in Firestore
         doc_ref = await self._collection.add(user_data)
@@ -31,7 +26,7 @@ class UserRepository:
         user_data["id"] = doc_ref[1].id
         
         # Return the created user as a Pydantic model
-        return User(**user_data)
+        return User.from_dict(user_data)
     
     async def get_user_by_id(self, user_id: str) -> Optional[User]:
         """Get user by ID"""
@@ -45,13 +40,7 @@ class UserRepository:
             
         data["id"] = doc.id
         
-        # Convert ISO strings back to datetime objects
-        if "created_at" in data and data["created_at"]:
-            data["created_at"] = datetime.fromisoformat(data["created_at"])
-        if "updated_at" in data and data["updated_at"]:
-            data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-        
-        return User(**data)
+        return User.from_dict(data)
     
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Get user by email address"""
@@ -67,23 +56,13 @@ class UserRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-            
-            return User(**data)
+            return User.from_dict(data)
         
         return None
     
     async def update_user(self, user: User) -> User:
         """Update an existing user"""
-        user_data = user.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        user_data["created_at"] = user.created_at.isoformat()
-        user_data["updated_at"] = user.updated_at.isoformat()
+        user_data = user.to_dict()
         
         # Remove the ID from data since it's used as document ID
         doc_id = user_data.pop("id")
@@ -116,25 +95,15 @@ class UserRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-            
-            users.append(User(**data))
+            users.append(User.from_dict(data))
         
         return users
     
     # UserProfile CRUD operations
     async def create_user_profile(self, profile: UserProfile) -> UserProfile:
         """Create a new user profile"""
-        # Convert Pydantic model to dict for Firestore
-        profile_data = profile.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        profile_data["created_at"] = profile.created_at.isoformat()
-        profile_data["updated_at"] = profile.updated_at.isoformat()
+        # Convert model to dict for Firestore
+        profile_data = profile.to_dict()
         
         # Create document in Firestore
         doc_ref = await self._collection.add(profile_data)
@@ -143,7 +112,7 @@ class UserRepository:
         profile_data["id"] = doc_ref[1].id
         
         # Return the created profile as a Pydantic model
-        return UserProfile(**profile_data)
+        return UserProfile.from_dict(profile_data)
     
     async def get_profile_by_user_id(self, user_id: str) -> Optional[UserProfile]:
         """Get user profile by user ID"""
@@ -159,13 +128,7 @@ class UserRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-            
-            return UserProfile(**data)
+            return UserProfile.from_dict(data)
         
         return None
     
@@ -181,21 +144,11 @@ class UserRepository:
             
         data["id"] = doc.id
         
-        # Convert ISO strings back to datetime objects
-        if "created_at" in data and data["created_at"]:
-            data["created_at"] = datetime.fromisoformat(data["created_at"])
-        if "updated_at" in data and data["updated_at"]:
-            data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-        
-        return UserProfile(**data)
+        return UserProfile.from_dict(data)
     
     async def update_user_profile(self, profile: UserProfile) -> UserProfile:
         """Update an existing user profile"""
-        profile_data = profile.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        profile_data["created_at"] = profile.created_at.isoformat()
-        profile_data["updated_at"] = profile.updated_at.isoformat()
+        profile_data = profile.to_dict()
         
         # Remove the ID from data since it's used as document ID
         doc_id = profile_data.pop("id")
@@ -216,14 +169,8 @@ class UserRepository:
     # UserProgress CRUD operations
     async def create_user_progress(self, progress: UserProgress) -> UserProgress:
         """Create a new user progress record"""
-        # Convert Pydantic model to dict for Firestore
-        progress_data = progress.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        progress_data["created_at"] = progress.created_at.isoformat()
-        progress_data["updated_at"] = progress.updated_at.isoformat()
-        if progress.last_formal_assessment_date:
-            progress_data["last_formal_assessment_date"] = progress.last_formal_assessment_date.isoformat()
+        # Convert model to dict for Firestore
+        progress_data = progress.to_dict()
         
         # Create document in Firestore
         doc_ref = await self._collection.add(progress_data)
@@ -232,7 +179,7 @@ class UserRepository:
         progress_data["id"] = doc_ref[1].id
         
         # Return the created progress as a Pydantic model
-        return UserProgress(**progress_data)
+        return UserProgress.from_dict(progress_data)
     
     async def get_progress_by_user_id(self, user_id: str) -> Optional[UserProgress]:
         """Get user progress by user ID"""
@@ -248,15 +195,7 @@ class UserRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-            if "last_formal_assessment_date" in data and data["last_formal_assessment_date"]:
-                data["last_formal_assessment_date"] = datetime.fromisoformat(data["last_formal_assessment_date"])
-            
-            return UserProgress(**data)
+            return UserProgress.from_dict(data)
         
         return None
     
@@ -272,25 +211,11 @@ class UserRepository:
             
         data["id"] = doc.id
         
-        # Convert ISO strings back to datetime objects
-        if "created_at" in data and data["created_at"]:
-            data["created_at"] = datetime.fromisoformat(data["created_at"])
-        if "updated_at" in data and data["updated_at"]:
-            data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-        if "last_formal_assessment_date" in data and data["last_formal_assessment_date"]:
-            data["last_formal_assessment_date"] = datetime.fromisoformat(data["last_formal_assessment_date"])
-        
-        return UserProgress(**data)
+        return UserProgress.from_dict(data)
     
     async def update_user_progress(self, progress: UserProgress) -> UserProgress:
         """Update an existing user progress record"""
-        progress_data = progress.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        progress_data["created_at"] = progress.created_at.isoformat()
-        progress_data["updated_at"] = progress.updated_at.isoformat()
-        if progress.last_formal_assessment_date:
-            progress_data["last_formal_assessment_date"] = progress.last_formal_assessment_date.isoformat()
+        progress_data = progress.to_dict()
         
         # Remove the ID from data since it's used as document ID
         doc_id = progress_data.pop("id")
@@ -323,13 +248,7 @@ class UserRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-            
-            users.append(User(**data))
+            users.append(User.from_dict(data))
         
         return users
     

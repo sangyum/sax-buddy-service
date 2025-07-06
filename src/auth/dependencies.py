@@ -6,6 +6,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from .models import AuthenticatedUser, JWTTokenData
 from .firebase_auth import verify_firebase_token, extract_token_from_header, get_firebase_user_custom_claims
 from .exceptions import AuthenticationError, MissingTokenError
+from .utils import is_development_mode
 
 # Security scheme for dependency injection
 security = HTTPBearer(bearerFormat="JWT")
@@ -31,6 +32,17 @@ async def get_current_user(
     Raises:
         HTTPException: If authentication fails
     """
+    # Skip authentication in development mode
+    if is_development_mode():
+        # Return a mock user for development
+        return AuthenticatedUser(
+            user_id="dev-user",
+            email="dev@example.com",
+            email_verified=True,
+            name="Development User",
+            custom_claims={}
+        )
+    
     # First try to get user from middleware (if JWT middleware is enabled)
     if hasattr(request.state, 'user') and request.state.user:
         return request.state.user
@@ -76,6 +88,21 @@ async def get_current_token_data(
     Raises:
         HTTPException: If authentication fails
     """
+    # Skip authentication in development mode
+    if is_development_mode():
+        # Return mock token data for development
+        from datetime import datetime, timezone
+        return JWTTokenData(
+            user_id="dev-user",
+            email="dev@example.com",
+            email_verified=True,
+            name="Development User",
+            issued_at=datetime.now(timezone.utc),
+            expires_at=datetime.now(timezone.utc),
+            audience="dev",
+            issuer="dev"
+        )
+    
     # First try to get token data from middleware
     if hasattr(request.state, 'token_data') and request.state.token_data:
         return request.state.token_data

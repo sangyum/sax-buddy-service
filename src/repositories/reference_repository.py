@@ -1,5 +1,4 @@
 from typing import List, Optional
-from datetime import datetime
 from google.cloud.firestore_v1.async_client import AsyncClient
 from google.cloud.firestore_v1.async_collection import AsyncCollectionReference
 from src.models.reference import ReferencePerformance, SkillLevelDefinition, SkillLevel
@@ -18,11 +17,7 @@ class ReferenceRepository:
     async def create_skill_level_definition(self, definition: SkillLevelDefinition) -> SkillLevelDefinition:
         """Create a new skill level definition"""
         # Convert Pydantic model to dict for Firestore
-        definition_data = definition.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        definition_data["created_at"] = definition.created_at.isoformat()
-        definition_data["updated_at"] = definition.updated_at.isoformat()
+        definition_data = definition.to_dict()
         
         # Create document in Firestore
         doc_ref = await self._collection.add(definition_data)
@@ -31,7 +26,7 @@ class ReferenceRepository:
         definition_data["id"] = doc_ref[1].id
         
         # Return the created definition as a Pydantic model
-        return SkillLevelDefinition(**definition_data)
+        return SkillLevelDefinition.from_dict(definition_data)
     
     async def get_skill_level_definition_by_id(self, definition_id: str) -> Optional[SkillLevelDefinition]:
         """Get skill level definition by ID"""
@@ -45,13 +40,7 @@ class ReferenceRepository:
             
         data["id"] = doc.id
         
-        # Convert ISO strings back to datetime objects
-        if "created_at" in data and data["created_at"]:
-            data["created_at"] = datetime.fromisoformat(data["created_at"])
-        if "updated_at" in data and data["updated_at"]:
-            data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-        
-        return SkillLevelDefinition(**data)
+        return SkillLevelDefinition.from_dict(data)
     
     async def get_skill_level_definition_by_level(self, skill_level: SkillLevel) -> Optional[SkillLevelDefinition]:
         """Get skill level definition by skill level"""
@@ -67,13 +56,7 @@ class ReferenceRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-            
-            return SkillLevelDefinition(**data)
+            return SkillLevelDefinition.from_dict(data)
         
         return None
     
@@ -91,23 +74,13 @@ class ReferenceRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-            
-            definitions.append(SkillLevelDefinition(**data))
+            definitions.append(SkillLevelDefinition.from_dict(data))
         
         return definitions
     
     async def update_skill_level_definition(self, definition: SkillLevelDefinition) -> SkillLevelDefinition:
         """Update an existing skill level definition"""
-        definition_data = definition.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        definition_data["created_at"] = definition.created_at.isoformat()
-        definition_data["updated_at"] = definition.updated_at.isoformat()
+        definition_data = definition.to_dict()
         
         # Remove the ID from data since it's used as document ID
         doc_id = definition_data.pop("id")
@@ -129,11 +102,7 @@ class ReferenceRepository:
     async def create_reference_performance(self, performance: ReferencePerformance) -> ReferencePerformance:
         """Create a new reference performance"""
         # Convert Pydantic model to dict for Firestore
-        performance_data = performance.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        performance_data["created_at"] = performance.created_at.isoformat()
-        performance_data["updated_at"] = performance.updated_at.isoformat()
+        performance_data = performance.to_dict()
         
         # Create document in Firestore
         doc_ref = await self._collection.add(performance_data)
@@ -142,7 +111,7 @@ class ReferenceRepository:
         performance_data["id"] = doc_ref[1].id
         
         # Return the created performance as a Pydantic model
-        return ReferencePerformance(**performance_data)
+        return ReferencePerformance.from_dict(performance_data)
     
     async def get_reference_performance_by_id(self, performance_id: str) -> Optional[ReferencePerformance]:
         """Get reference performance by ID"""
@@ -156,13 +125,7 @@ class ReferenceRepository:
             
         data["id"] = doc.id
         
-        # Convert ISO strings back to datetime objects
-        if "created_at" in data and data["created_at"]:
-            data["created_at"] = datetime.fromisoformat(data["created_at"])
-        if "updated_at" in data and data["updated_at"]:
-            data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-        
-        return ReferencePerformance(**data)
+        return ReferencePerformance.from_dict(data)
     
     async def get_reference_performances_by_exercise_id(self, exercise_id: str) -> List[ReferencePerformance]:
         """Get reference performances for specific exercise"""
@@ -180,13 +143,7 @@ class ReferenceRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-            
-            performances.append(ReferencePerformance(**data))
+            performances.append(ReferencePerformance.from_dict(data))
         
         return performances
     
@@ -206,13 +163,7 @@ class ReferenceRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-            
-            performances.append(ReferencePerformance(**data))
+            performances.append(ReferencePerformance.from_dict(data))
         
         return performances
     
@@ -237,13 +188,7 @@ class ReferenceRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-            
-            performances.append(ReferencePerformance(**data))
+            performances.append(ReferencePerformance.from_dict(data))
         
         return performances
     
@@ -276,23 +221,13 @@ class ReferenceRepository:
                 
             data["id"] = doc.id
             
-            # Convert ISO strings back to datetime objects
-            if "created_at" in data and data["created_at"]:
-                data["created_at"] = datetime.fromisoformat(data["created_at"])
-            if "updated_at" in data and data["updated_at"]:
-                data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-            
-            performances.append(ReferencePerformance(**data))
+            performances.append(ReferencePerformance.from_dict(data))
         
         return performances
     
     async def update_reference_performance(self, performance: ReferencePerformance) -> ReferencePerformance:
         """Update an existing reference performance"""
-        performance_data = performance.model_dump()
-        
-        # Convert datetime objects to ISO strings for Firestore
-        performance_data["created_at"] = performance.created_at.isoformat()
-        performance_data["updated_at"] = performance.updated_at.isoformat()
+        performance_data = performance.to_dict()
         
         # Remove the ID from data since it's used as document ID
         doc_id = performance_data.pop("id")
