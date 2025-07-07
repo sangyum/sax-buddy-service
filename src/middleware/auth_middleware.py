@@ -1,5 +1,6 @@
 """JWT authentication middleware"""
 
+import os
 from typing import Optional, List
 from fastapi import Request
 from fastapi.security import HTTPBearer
@@ -9,6 +10,9 @@ from src.auth.firebase_auth import verify_firebase_token, extract_token_from_hea
 from src.auth.models import AuthenticatedUser, AuthErrorResponse
 from src.auth.exceptions import AuthenticationError, MissingTokenError
 from src.auth.utils import is_development_mode
+from src.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class JWTMiddleware(BaseHTTPMiddleware):
@@ -38,6 +42,13 @@ class JWTMiddleware(BaseHTTPMiddleware):
         # Disable auth in development mode
         self.is_development = is_development_mode()
         self.require_auth_by_default = require_auth_by_default and not self.is_development
+        
+        logger.info(
+            "JWTMiddleware initialized",
+            is_development=self.is_development,
+            require_auth_by_default=self.require_auth_by_default,
+            environment=os.getenv("ENVIRONMENT", "production")
+        )
     
     async def dispatch(self, request: Request, call_next) -> Response:
         """Process request through JWT authentication
@@ -49,17 +60,41 @@ class JWTMiddleware(BaseHTTPMiddleware):
         Returns:
             Response object
         """
+        # Skip authentication entirely in development mode
+        if self.is_development:
+            logger.info(
+                "Skipping authentication - development mode",
+                path=request.url.path,
+                method=request.method,
+                is_development=self.is_development
+            )
+            return await call_next(request)
+        
         # Skip authentication for excluded paths
         if self._is_excluded_path(request.url.path):
+            logger.info(
+                "Skipping authentication - excluded path",
+                path=request.url.path,
+                method=request.method
+            )
             return await call_next(request)
         
         # Skip authentication for OPTIONS requests (CORS preflight)
         if request.method == "OPTIONS":
+            logger.info(
+                "Skipping authentication - OPTIONS request",
+                path=request.url.path,
+                method=request.method
+            )
             return await call_next(request)
         
-        # Skip authentication entirely in development mode
-        if self.is_development:
-            return await call_next(request)
+        logger.info(
+            "Processing authentication",
+            path=request.url.path,
+            method=request.method,
+            is_development=self.is_development,
+            require_auth=self.require_auth_by_default
+        )
         
         try:
             # Extract and verify token

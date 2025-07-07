@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
 from firebase_admin import credentials, firestore_async, storage
@@ -109,7 +109,8 @@ app.add_middleware(
         "/health",
         "/favicon.ico",
         "/",
-        "/swagger"
+        "/swagger",
+        "/debug"
     ]
 )
 
@@ -123,7 +124,8 @@ app.add_middleware(
         "/health",
         "/favicon.ico",
         "/",
-        "/swagger"
+        "/swagger",
+        "/debug"
     ],
     require_auth_by_default=True
 )
@@ -171,6 +173,40 @@ async def get_swagger_ui():
     """Swagger UI endpoint - redirects to the main docs"""
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/docs")
+
+
+@app.get("/debug/auth-status")
+async def debug_auth_status(request: Request):
+    """Debug endpoint to check authentication status"""
+    from src.auth.dependencies import get_current_user, get_current_token_data
+    from src.auth.utils import is_development_mode
+    
+    try:
+        # Try to get current user (this will use development mock if in dev mode)
+        user = await get_current_user(request)
+        user_data = user.model_dump() if user else None
+    except Exception as e:
+        user_data = {"error": str(e), "type": type(e).__name__}
+    
+    try:
+        # Try to get token data (this will use development mock if in dev mode)
+        token_data = await get_current_token_data(request)
+        token_info = token_data.model_dump() if token_data else None
+    except Exception as e:
+        token_info = {"error": str(e), "type": type(e).__name__}
+    
+    return {
+        "environment": os.getenv("ENVIRONMENT", "production"),
+        "is_development_mode": is_development_mode(),
+        "request_path": request.url.path,
+        "request_method": request.method,
+        "has_authorization_header": "authorization" in request.headers,
+        "authorization_header": request.headers.get("authorization", "Not provided")[:50] + "..." if request.headers.get("authorization") else None,
+        "middleware_user_available": hasattr(request.state, 'user') and request.state.user is not None,
+        "middleware_token_available": hasattr(request.state, 'token_data') and request.state.token_data is not None,
+        "user_data": user_data,
+        "token_data": token_info
+    }
 
 
 

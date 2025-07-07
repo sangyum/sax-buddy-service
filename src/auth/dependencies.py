@@ -1,15 +1,19 @@
 """Authentication dependencies for FastAPI"""
 
+import os
 from typing import Optional
 from fastapi import Request, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from .models import AuthenticatedUser, JWTTokenData
-from .firebase_auth import verify_firebase_token, extract_token_from_header, get_firebase_user_custom_claims
+from .firebase_auth import verify_firebase_token, get_firebase_user_custom_claims
 from .exceptions import AuthenticationError, MissingTokenError
 from .utils import is_development_mode
+from src.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # Security scheme for dependency injection
-security = HTTPBearer(bearerFormat="JWT")
+security = HTTPBearer(bearerFormat="JWT", auto_error=False)
 
 
 async def get_current_user(
@@ -34,12 +38,18 @@ async def get_current_user(
     """
     # Skip authentication in development mode
     if is_development_mode():
+        logger.info(
+            "Returning mock user for development mode",
+            environment=os.getenv("ENVIRONMENT", "production"),
+            user_id="dev-user"
+        )
         # Return a mock user for development
         return AuthenticatedUser(
             user_id="dev-user",
             email="dev@example.com",
             email_verified=True,
             name="Development User",
+            picture=None,
             custom_claims={}
         )
     
@@ -90,6 +100,11 @@ async def get_current_token_data(
     """
     # Skip authentication in development mode
     if is_development_mode():
+        logger.info(
+            "Returning mock token data for development mode",
+            environment=os.getenv("ENVIRONMENT", "production"),
+            user_id="dev-user"
+        )
         # Return mock token data for development
         from datetime import datetime, timezone
         return JWTTokenData(
@@ -97,6 +112,7 @@ async def get_current_token_data(
             email="dev@example.com",
             email_verified=True,
             name="Development User",
+            picture=None,
             issued_at=datetime.now(timezone.utc),
             expires_at=datetime.now(timezone.utc),
             audience="dev",
