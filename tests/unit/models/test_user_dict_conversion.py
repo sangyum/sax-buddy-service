@@ -134,6 +134,8 @@ class TestUserDictConversion:
             "email": "test@example.com",
             "name": "John Doe",
             "is_active": True,
+            "initial_assessment_completed": False,
+            "initial_assessment_completed_at": None,
             "created_at": now.isoformat(),
             "updated_at": now.isoformat()
         }

@@ -4,24 +4,28 @@ REST backend service to support Sax Buddy (mobile application for iOS/Android)
 
 ## Development Practice
 
-### TDD Workflow
+## Development Practice
 
-1. **Act as a pairing partner** - Do not commit anything until explicit consent is given
-2. **Test-Driven Development (TDD)** - Follow the Red-Green-Refactor cycle:
-   * **Red**: Write a failing test first
-   * **Green**: Implement minimal code to make the test pass
-   * **Refactor**: Clean up code while keeping tests green
-3. **Always prefer strongly-typed classes over dictionaries** for return types and data structures
-4. **Run tests after every change**: `uv run pytest tests/ -v`
-5. **Update documentation** to reflect architectural changes
+1. Act as a pairing partner for the user. Do not commit anything until explicit consent is given
+2. **STRICT TDD PRACTICE - RED/GREEN/REFACTOR CYCLE:**
+  * **RED**: Write a failing test that describes the intended behavior FIRST
+  * **GREEN**: Write minimal code to make that specific test pass
+  * **REFACTOR**: Clean up code while keeping tests green
+  * **NEVER** write implementation before tests
+  * **ALWAYS** see the test fail first to validate it works
+  * Run test after each step: `uv run pytest tests/ -v`
+3. Update this document with up-to-date project structures and architecture.
+4. **TDD Reminder**: If you find yourself writing implementation code before seeing a failing test, STOP and write the test first.
 
 ### Development Environment Setup
 
 **Firebase Emulator for Development:**
 - **Start Emulator**: `firebase emulators:start --only firestore`
 - **Development Configuration**: `ENVIRONMENT=development` in `.env`
-- **Authentication Bypass**: JWT auth disabled in development mode
+- **Authentication Bypass**: JWT auth bypassed in development mode (returns mock user)
+- **Mock User**: `dev-user` with email `dev@example.com` for all authenticated endpoints
 - **Emulator UI**: http://127.0.0.1:4000/firestore
+- **Debug Endpoint**: `GET /debug/auth-status` for authentication flow verification
 
 **Logging Configuration:**
 - **Default Level**: ERROR (configurable via `LOG_LEVEL` environment variable)
@@ -31,7 +35,7 @@ REST backend service to support Sax Buddy (mobile application for iOS/Android)
 - **Usage**: `from src.logging_config import get_logger; logger = get_logger(__name__)`
 
 **Test Categories:**
-- **Unit Tests** (93 tests): Domain models, business logic, authentication
+- **Unit Tests** (106 tests): Domain models, business logic, authentication, middleware
 - **Integration Tests** (88+ tests): Repository operations with Firestore emulator
 - **Test Command**: `uv run pytest tests/unit/auth/ -v` (auth-specific)
 - **All Tests**: `uv run pytest tests/ -v`
@@ -53,11 +57,11 @@ REST backend service to support Sax Buddy (mobile application for iOS/Android)
 src/
 ├── auth/                    # JWT Authentication Module
 │   ├── __init__.py         # Authentication exports
-│   ├── models.py           # JWTTokenData, AuthenticatedUser, AuthErrorResponse
+│   ├── models.py           # JWTTokenData, AuthenticatedUser, AuthErrorResponse (Pydantic v2)
 │   ├── exceptions.py       # Custom authentication exceptions
 │   ├── firebase_auth.py    # Firebase token verification utilities
-│   ├── middleware.py       # JWT middleware for request interception
-│   └── dependencies.py     # FastAPI authentication dependencies
+│   ├── utils.py            # Development mode detection utilities
+│   └── dependencies.py     # FastAPI authentication dependencies (auto_error=False)
 ├── api/
 │   ├── routers/            # API endpoint routers (all secured with JWT)
 │   │   ├── users.py        # User management endpoints
@@ -75,6 +79,8 @@ src/
 │   ├── assessment.py      # FormalAssessment, Feedback, SkillMetrics
 │   └── reference.py       # ReferencePerformance, SkillLevelDefinition
 ├── middleware/            # HTTP middleware components
+│   ├── __init__.py        # Middleware exports
+│   ├── auth_middleware.py # JWT authentication middleware with development bypass
 │   └── logging_middleware.py # Request/response logging with structured data
 ├── repositories/          # Data access layer (Firestore integration)
 │   ├── content_repository.py    # Exercise, LessonPlan, Lesson operations
@@ -87,9 +93,10 @@ src/
 ├── logging_config.py      # Structured logging configuration with loguru
 └── main.py               # Application entry point with middleware stack
 tests/
-├── unit/                  # Unit tests (63 tests)
+├── unit/                  # Unit tests (106 tests)
 │   ├── models/           # Domain model validation tests
-│   └── auth/             # Authentication system tests
+│   ├── auth/             # Authentication system tests
+│   └── middleware/       # Middleware tests (JWT auth, logging)
 └── integration/          # Integration tests with Firestore emulator
     ├── test_assessment_repository.py
     ├── test_user_repository.py
@@ -150,6 +157,7 @@ logs/                     # Application logs (production)
 - `/health` - Health check endpoint
 - `/` - Root endpoint with API information
 - `/swagger` - Swagger UI redirect
+- `/debug/*` - Debug endpoints for development
 
 ## API Endpoints (All Secured)
 
@@ -191,15 +199,20 @@ logs/                     # Application logs (production)
 - `GET /reference/skill-levels` - Get skill level definitions
 - `GET /reference/performances` - Get reference performances
 
+### Debug API (`/debug`) - Development Only
+- `GET /debug/auth-status` - Authentication flow verification and mock user status
+
 ## Key Design Decisions
 
-- **JWT Authentication**: Firebase ID token verification for all API endpoints
+- **Development-Friendly Authentication**: JWT authentication bypassed in development mode with mock user
 - **Middleware-based Security**: Automatic request interception and user context injection
-- **Flexible Dependencies**: Optional and required authentication with role-based access
-- **Database-agnostic models**: Pure Pydantic BaseModel for future flexibility
+- **Pydantic v2 Migration**: Modern ConfigDict instead of deprecated class-based Config
+- **Structured Logging**: Loguru-based logging with JSON output and environment-aware configuration
+- **Auto-error False**: HTTPBearer security with `auto_error=False` for development bypass
+- **Database-agnostic models**: Enhanced BaseModel with `from_dict()` and `to_dict()` methods
 - **Mobile-first processing**: Structured data sent from mobile device DSP analysis
 - **Multi-dimensional skills**: Separate tracking for intonation, rhythm, articulation, dynamics
 - **Adaptive learning**: AI-generated lessons based on weighted recent performance
 - **User-controlled assessments**: Formal assessments triggered by user request or intervals
 - **Skill-level references**: Target performances appropriate for user's current level
-- **Comprehensive testing**: 63 unit tests + integration tests with Firestore emulator
+- **Comprehensive testing**: 106 unit tests + integration tests with Firestore emulator

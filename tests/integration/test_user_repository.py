@@ -50,7 +50,8 @@ def sample_user() -> User:
         name="Test User",
         is_active=True,
         created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc)
+        updated_at=datetime.now(timezone.utc),
+        initial_assessment_completed_at=None
     )
 
 

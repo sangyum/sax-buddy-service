@@ -23,14 +23,26 @@ class User(BaseModel):
     email: EmailStr = Field(..., description="User email address")
     name: str = Field(..., description="User display name")
     is_active: bool = Field(default=True, description="Whether user account is active")
+    initial_assessment_completed: bool = Field(default=False, description="Whether user has completed initial assessment")
+    initial_assessment_completed_at: Optional[datetime] = Field(None, description="When initial assessment was completed")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Account creation timestamp")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
 
-
+class InitialAssessment(BaseModel):
+    experience_level: str = Field(...)
+    has_formal_instruction: bool = Field(False)
+    instruction_duration: str = Field(...)
+    musical_goals: List[str] = Field(...)
+    music_reading_level: str = Field(...)
+    preferred_learning_style: str = Field(...)
+    identified_challenges: List[str] = Field(...)
+    practice_frequence: PracticeFrequency = Field(..., description="How often user practices")
+    preferred_practice_duration_minutes: int = Field(...)
 
 class UserProfile(BaseModel):
     id: str = Field(..., description="Unique profile identifier")
     user_id: str = Field(..., description="Reference to User")
+    initial_assessment: Optional[InitialAssessment] = Field(None, description="Initial Assessment")
     current_skill_level: SkillLevel = Field(..., description="User's current skill level")
     learning_goals: List[str] = Field(default_factory=list, description="User's learning objectives")
     practice_frequency: PracticeFrequency = Field(..., description="How often user practices")

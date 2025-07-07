@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from google.cloud.firestore_v1.async_client import AsyncClient
 from src.models.user import User, UserProfile, UserProgress
-from src.api.schemas.requests import UserCreate, UserProfileUpdate
+from src.api.schemas.requests import InitialAssessmentCreate, UserCreate, UserProfileUpdate
 from src.services.user_service import UserService
 from src.repositories.user_repository import UserRepository
 from src.dependencies import get_firestore_client
@@ -105,6 +105,29 @@ async def update_user_profile(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
             detail="User profile update not implemented yet"
         )
+
+@router.put("/{user_id}/initialAssessment", response_model=UserProfile)
+async def add_initial_assessment(
+    user_id: str, 
+    initial_assessment_data: InitialAssessmentCreate,
+    user_service: UserService = Depends(get_user_service),
+    current_user: AuthenticatedUser = Depends(require_auth)
+):
+    """Update user profile"""
+    try:
+        profile = await user_service.add_intial_assessment(user_id, initial_assessment_data)
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User profile not found"
+            )
+        return profile
+    except NotImplementedError:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="User profile update not implemented yet"
+        )
+
 
 
 @router.get("/{user_id}/progress", response_model=UserProgress)

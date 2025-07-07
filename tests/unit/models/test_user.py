@@ -36,6 +36,31 @@ class TestUser:
         )
         
         assert user.is_active is False
+    
+    def test_user_initial_assessment_defaults(self):
+        """Test that initial assessment fields have correct default values"""
+        user = User(
+            id="550e8400-e29b-41d4-a716-446655440000",
+            email="test@example.com",
+            name="Test User"
+        )
+        
+        assert user.initial_assessment_completed is False
+        assert user.initial_assessment_completed_at is None
+    
+    def test_user_initial_assessment_completion(self):
+        """Test setting initial assessment as completed"""
+        completion_time = datetime(2023, 12, 1, 10, 0, 0)
+        user = User(
+            id="550e8400-e29b-41d4-a716-446655440000",
+            email="test@example.com",
+            name="Test User",
+            initial_assessment_completed=True,
+            initial_assessment_completed_at=completion_time
+        )
+        
+        assert user.initial_assessment_completed is True
+        assert user.initial_assessment_completed_at == completion_time
 
 
 class TestUserProfile:

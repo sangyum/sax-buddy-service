@@ -9,6 +9,16 @@ class UserCreate(BaseModel):
     email: EmailStr
     name: str
 
+class InitialAssessmentCreate(BaseModel):
+    experience_level: str
+    has_formal_instruction: bool
+    instruction_duration: str
+    musical_goals: List[str]
+    music_reading_level: str
+    preferred_learning_style: str
+    identified_challenges: List[str]
+    practice_frequence: PracticeFrequency
+    preferred_practice_duration_minutes: int
 
 class UserProfileUpdate(BaseModel):
     current_skill_level: Optional[SkillLevel] = None
