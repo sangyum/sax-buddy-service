@@ -6,49 +6,73 @@ from firebase_admin import credentials, firestore_async, storage
 import os
 from src.api.routers import users, performance, content, assessment, reference
 from src.api.openapi import custom_openapi
-from src.auth import JWTMiddleware
+from src.middleware import LoggingMiddleware, JWTMiddleware
+from src.logging_config import setup_logging, get_logger
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Setup structured logging
+setup_logging()
+logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize Firebase Admin SDK on startup, cleanup on shutdown"""
     # Startup - Initialize Firebase Admin SDK
+    logger.info("Starting application initialization")
+    
     try:
         if not firebase_admin._apps:
             # Check if running on Google Cloud (uses Application Default Credentials)
             if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or os.getenv("GAE_APPLICATION"):
+                logger.info("Initializing Firebase with Application Default Credentials")
                 firebase_admin.initialize_app()
             else:
                 # Local development - use service account key
                 service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "serviceAccountKey.json")
                 if os.path.exists(service_account_path):
+                    logger.info("Initializing Firebase with service account key", path=service_account_path)
                     cred = credentials.Certificate(service_account_path)
                     firebase_admin.initialize_app(cred)
                 else:
-                    # Fallback to default credentials
+                    logger.info("Initializing Firebase with default credentials")
                     firebase_admin.initialize_app()
         
         # Store Firestore async client in app state
         app.state.firestore_client = firestore_async.client()
-        app.state.bucket = storage.bucket(os.getenv("FIREBASE_STORAGE_BUCKET", "sax-buddy"))
-        print("Firebase Admin SDK initialized successfully")
+        bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET", "sax-buddy")
+        app.state.bucket = storage.bucket(bucket_name)
+        
+        logger.success(
+            "Firebase Admin SDK initialized successfully",
+            bucket=bucket_name,
+            environment=os.getenv("ENVIRONMENT", "development")
+        )
         
     except Exception as e:
-        print(f"Warning: Failed to initialize Firebase Admin SDK: {e}")
+        logger.error(
+            "Failed to initialize Firebase Admin SDK",
+            error=str(e),
+            error_type=type(e).__name__
+        )
         app.state.firestore_client = None
         app.state.bucket = None
     
     yield
     
     # Shutdown - Cleanup Firebase resources
+    logger.info("Starting application shutdown")
     try:
         if firebase_admin._apps:
             firebase_admin.delete_app(firebase_admin.get_app())
-            print("Firebase Admin SDK cleaned up successfully")
+            logger.success("Firebase Admin SDK cleaned up successfully")
     except Exception as e:
-        print(f"Error during Firebase cleanup: {e}")
+        logger.error(
+            "Error during Firebase cleanup",
+            error=str(e),
+            error_type=type(e).__name__
+        )
 
 
 app = FastAPI(
@@ -73,6 +97,20 @@ app = FastAPI(
     ],
     docs_url="/docs",
     redoc_url="/redoc"
+)
+
+# Request/Response logging middleware
+app.add_middleware(
+    LoggingMiddleware,
+    exclude_paths=[
+        "/docs",
+        "/redoc", 
+        "/openapi.json",
+        "/health",
+        "/favicon.ico",
+        "/",
+        "/swagger"
+    ]
 )
 
 # JWT authentication middleware

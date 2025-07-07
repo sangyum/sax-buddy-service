@@ -25,7 +25,7 @@ from .firebase_auth import (
     set_firebase_user_custom_claims,
     extract_token_from_header
 )
-from .middleware import JWTMiddleware
+# JWTMiddleware is now in src.middleware module
 
 __all__ = [
     # Models
@@ -53,6 +53,4 @@ __all__ = [
     "get_firebase_user_custom_claims",
     "set_firebase_user_custom_claims",
     "extract_token_from_header",
-    # Middleware
-    "JWTMiddleware",
 ]

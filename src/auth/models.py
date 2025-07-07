@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class JWTTokenData(BaseModel):
@@ -17,8 +17,8 @@ class JWTTokenData(BaseModel):
     audience: str = Field(..., description="Firebase project ID")
     issuer: str = Field(..., description="Token issuer")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "abc123def456",
                 "email": "user@example.com",
@@ -31,6 +31,7 @@ class JWTTokenData(BaseModel):
                 "issuer": "https://securetoken.google.com/sax-buddy-app"
             }
         }
+    )
 
 
 class AuthenticatedUser(BaseModel):
@@ -54,8 +55,8 @@ class AuthenticatedUser(BaseModel):
             custom_claims=custom_claims or {}
         )
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "abc123def456",
                 "email": "user@example.com",
@@ -68,6 +69,7 @@ class AuthenticatedUser(BaseModel):
                 }
             }
         }
+    )
 
 
 class AuthErrorResponse(BaseModel):
@@ -76,8 +78,8 @@ class AuthErrorResponse(BaseModel):
     message: str = Field(..., description="Human-readable error message")
     details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "error": "token_expired",
                 "message": "The provided authentication token has expired",
@@ -87,3 +89,4 @@ class AuthErrorResponse(BaseModel):
                 }
             }
         }
+    )

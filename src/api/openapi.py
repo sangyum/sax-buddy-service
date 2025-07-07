@@ -18,8 +18,8 @@ def custom_openapi(app: FastAPI):
         """,
         routes=app.routes,
         servers=[
-            {"url": "http://localhost:8000/v1", "description": "Development server"},
-            {"url": "https://api.saxbuddy.com/v1", "description": "Production server"},
+            {"url": "http://localhost:8000", "description": "Development server"},
+            {"url": "https://api.saxbuddy.com", "description": "Production server"},
         ]
     )
     

@@ -4,9 +4,7 @@ import pytest
 from unittest.mock import Mock, patch, AsyncMock
 from fastapi import FastAPI, Request
 from starlette.responses import JSONResponse
-from src.auth.middleware import JWTMiddleware
-from src.auth.models import AuthenticatedUser, JWTTokenData
-from src.auth.exceptions import AuthenticationError, MissingTokenError
+from src.middleware.auth_middleware import JWTMiddleware
 
 
 class TestJWTMiddleware:
@@ -151,7 +149,7 @@ class TestJWTMiddleware:
         request = Mock(spec=Request)
         request.headers = {"authorization": "Bearer valid-token"}
         
-        with patch('src.auth.middleware.extract_token_from_header', return_value="valid-token"):
+        with patch('src.middleware.auth_middleware.extract_token_from_header', return_value="valid-token"):
             token = middleware._extract_token_from_request(request)
             assert token == "valid-token"
         
@@ -162,6 +160,6 @@ class TestJWTMiddleware:
         
         # Test with invalid authorization header
         request.headers = {"authorization": "Invalid header"}
-        with patch('src.auth.middleware.extract_token_from_header', side_effect=Exception("Invalid")):
+        with patch('src.middleware.auth_middleware.extract_token_from_header', side_effect=Exception("Invalid")):
             token = middleware._extract_token_from_request(request)
             assert token is None

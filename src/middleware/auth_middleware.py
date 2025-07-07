@@ -5,10 +5,10 @@ from fastapi import Request
 from fastapi.security import HTTPBearer
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
-from .firebase_auth import verify_firebase_token, extract_token_from_header
-from .models import AuthenticatedUser, AuthErrorResponse
-from .exceptions import AuthenticationError, MissingTokenError
-from .utils import is_development_mode
+from src.auth.firebase_auth import verify_firebase_token, extract_token_from_header
+from src.auth.models import AuthenticatedUser, AuthErrorResponse
+from src.auth.exceptions import AuthenticationError, MissingTokenError
+from src.auth.utils import is_development_mode
 
 
 class JWTMiddleware(BaseHTTPMiddleware):

@@ -13,4 +13,7 @@ wheels/
 
 serviceAccountKey.json
 
+# Log files
 *.log
+logs/*.gz
+!logs/.gitkeep

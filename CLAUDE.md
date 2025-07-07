@@ -23,6 +23,13 @@ REST backend service to support Sax Buddy (mobile application for iOS/Android)
 - **Authentication Bypass**: JWT auth disabled in development mode
 - **Emulator UI**: http://127.0.0.1:4000/firestore
 
+**Logging Configuration:**
+- **Default Level**: ERROR (configurable via `LOG_LEVEL` environment variable)
+- **Valid Levels**: TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL
+- **Development**: Console logging with colors and structured output
+- **Production**: Additional file logging with JSON format and log rotation
+- **Usage**: `from src.logging_config import get_logger; logger = get_logger(__name__)`
+
 **Test Categories:**
 - **Unit Tests** (93 tests): Domain models, business logic, authentication
 - **Integration Tests** (88+ tests): Repository operations with Firestore emulator
@@ -37,6 +44,7 @@ REST backend service to support Sax Buddy (mobile application for iOS/Android)
 * **Firestore** - NoSQL document database for scalable data storage
 * **Pydantic** - Data validation and serialization with type safety
 * **JWT Authentication** - Firebase ID token verification for secure API access
+* **Loguru** - Structured logging with JSON output and automatic rotation
 * **pytest** - Comprehensive testing framework with async support
 
 ## Project Structure
@@ -60,11 +68,14 @@ src/
 │   ├── schemas/            # Request/response schemas
 │   └── openapi.py          # Custom OpenAPI configuration
 ├── models/                 # Domain models (Pydantic BaseModel)
+│   ├── base.py            # Enhanced BaseModel with dict conversion
 │   ├── user.py            # User, UserProfile, UserProgress
 │   ├── performance.py     # PerformanceSession, PerformanceMetrics
 │   ├── content.py         # Exercise, LessonPlan, Lesson
 │   ├── assessment.py      # FormalAssessment, Feedback, SkillMetrics
 │   └── reference.py       # ReferencePerformance, SkillLevelDefinition
+├── middleware/            # HTTP middleware components
+│   └── logging_middleware.py # Request/response logging with structured data
 ├── repositories/          # Data access layer (Firestore integration)
 │   ├── content_repository.py    # Exercise, LessonPlan, Lesson operations
 │   ├── performance_repository.py # PerformanceSession, PerformanceMetrics, analytics
@@ -73,7 +84,8 @@ src/
 │   └── reference_repository.py  # ReferencePerformance, SkillLevelDefinition
 ├── services/              # Business logic layer
 ├── dependencies.py        # FastAPI dependency providers
-└── main.py               # Application entry point with JWT middleware
+├── logging_config.py      # Structured logging configuration with loguru
+└── main.py               # Application entry point with middleware stack
 tests/
 ├── unit/                  # Unit tests (63 tests)
 │   ├── models/           # Domain model validation tests
@@ -84,6 +96,9 @@ tests/
     ├── test_performance_repository.py
     ├── test_content_repository.py
     └── test_reference_repository.py
+logs/                     # Application logs (production)
+├── .gitkeep             # Keep directory in git
+└── sax_buddy_*.log      # Daily rotated log files with compression
 ```
 
 ## Domain Models

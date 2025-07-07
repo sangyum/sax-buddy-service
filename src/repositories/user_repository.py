@@ -2,6 +2,9 @@ from typing import List, Optional
 from google.cloud.firestore_v1.async_client import AsyncClient
 from google.cloud.firestore_v1.async_collection import AsyncCollectionReference
 from src.models.user import User, UserProfile, UserProgress
+from src.logging_config import get_logger, log_db_operation
+
+logger = get_logger(__name__)
 
 
 class UserRepository:
@@ -14,6 +17,7 @@ class UserRepository:
         self._collection = firestore_client.collection("users")
     
     # User CRUD operations
+    @log_db_operation("users", "create")
     async def create_user(self, user: User) -> User:
         """Create a new user"""
         # Convert model to dict for Firestore
@@ -28,6 +32,7 @@ class UserRepository:
         # Return the created user as a Pydantic model
         return User.from_dict(user_data)
     
+    @log_db_operation("users", "read")
     async def get_user_by_id(self, user_id: str) -> Optional[User]:
         """Get user by ID"""
         doc = await self._collection.document(user_id).get()

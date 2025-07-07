@@ -51,7 +51,7 @@ async def trigger_assessment(
 ):
     """Trigger formal assessment"""
     try:
-        return await assessment_service.trigger_assessment(user_id, trigger_data)
+        return await assessment_service.trigger_assessment(trigger_data)
     except NotImplementedError:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
