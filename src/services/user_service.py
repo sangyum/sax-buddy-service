@@ -1,6 +1,6 @@
 from typing import Optional
 
-from exceptions.not_found import NotFoundException
+from src.exceptions.not_found import NotFoundException
 from models.assessment import SkillLevel
 from src.models.user import InitialAssessment, PracticeFrequency, User, UserProfile, UserProgress
 from src.api.schemas.requests import InitialAssessmentCreate, UserCreate, UserProfileUpdate
