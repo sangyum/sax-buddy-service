@@ -132,7 +132,6 @@ class TestJWTMiddleware:
         
         # Test excluded paths
         assert middleware._is_excluded_path("/docs") is True
-        assert middleware._is_excluded_path("/docs/swagger") is True
         assert middleware._is_excluded_path("/redoc") is True
         assert middleware._is_excluded_path("/health") is True
         

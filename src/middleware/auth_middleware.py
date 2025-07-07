@@ -151,10 +151,11 @@ class JWTMiddleware(BaseHTTPMiddleware):
         Returns:
             True if path should be excluded from auth
         """
-        for excluded_path in self.excluded_paths:
-            if path.startswith(excluded_path):
-                return True
-        return False
+        return path in self.excluded_paths;
+        # for excluded_path in self.excluded_paths:
+        #     if path.startswith(excluded_path):
+        #         return True
+        # return False
     
     def _extract_token_from_request(self, request: Request) -> Optional[str]:
         """Extract JWT token from request headers
