@@ -1,0 +1,187 @@
+# Sax Buddy Service
+
+Firebase Functions for comprehensive saxophone assessment audio analysis using Essentia.js DSP library.
+
+## Overview
+
+This service provides HTTP-triggered Firebase Functions for analyzing saxophone recordings and generating detailed performance assessments across multiple dimensions:
+
+- **Pitch and Intonation**: Accuracy, stability, interval precision, tuning drift
+- **Timing and Rhythm**: Temporal accuracy, subdivision precision, groove consistency
+- **Tone Quality and Timbre**: Harmonic content, dynamic range, timbral consistency, vibrato
+- **Technical Execution**: Articulation, finger technique, breath management, extended techniques
+- **Musical Expression**: Phrasing, dynamics, stylistic authenticity, improvisation
+- **Performance Consistency**: Error patterns, recovery, endurance, difficulty scaling
+
+## Architecture
+
+- **Framework**: Firebase Functions with TypeScript
+- **Audio Analysis**: Essentia.js (WebAssembly DSP library)
+- **Storage**: Firebase Storage for audio files
+- **Database**: Firestore for assessment sessions and results
+- **Runtime**: Node.js 18+
+
+## API Endpoints
+
+### POST `/analyzeAssessmentAudio`
+
+Analyzes all exercise recordings in an assessment session.
+
+**Request Body:**
+```json
+{
+  "userId": "string",
+  "assessmentId": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "success": boolean,
+  "assessmentId": "string",
+  "processedExercises": number,
+  "failedExercises": number,
+  "results": {
+    "exerciseId": {
+      "status": "completed" | "failed",
+      "analysis": { /* detailed analysis */ },
+      "error": "string (if failed)"
+    }
+  },
+  "summary": {
+    "overallPerformanceScore": number,
+    "averageScores": { /* category scores */ },
+    "strengthAreas": string[],
+    "improvementAreas": string[],
+    "processingTime": number
+  }
+}
+```
+
+### GET `/healthCheck`
+
+Service health check endpoint.
+
+## Data Models
+
+### AssessmentSession
+```typescript
+{
+  id: string;
+  userId: string;
+  exercises: Exercise[];
+  overallStatus: "pending" | "processing" | "completed" | "failed";
+  summary?: AssessmentSummary;
+}
+```
+
+### Exercise
+```typescript
+{
+  id: string;
+  recordingUrl: string; // Firebase Storage URL
+  analysisStatus: ProcessingStatus;
+  analysis?: ExtendedAudioAnalysis;
+  metadata?: ExerciseMetadata;
+}
+```
+
+## Development
+
+### Prerequisites
+
+- Node.js 18+
+- Firebase CLI
+- Firebase project with Functions, Storage, and Firestore enabled
+
+### Setup
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Build the project:
+```bash
+npm run build
+```
+
+3. Start local emulator:
+```bash
+npm run serve
+```
+
+4. Deploy to Firebase:
+```bash
+npm run deploy
+```
+
+### Scripts
+
+- `npm run build` - Compile TypeScript
+- `npm run build:watch` - Watch mode compilation
+- `npm run serve` - Start Firebase emulators
+- `npm run deploy` - Deploy to Firebase
+- `npm run lint` - Run ESLint
+- `npm run test` - Run unit tests
+
+## Configuration
+
+### Firebase Configuration
+
+The function is configured with:
+- **Memory**: 2GB (for audio processing)
+- **Timeout**: 540 seconds (9 minutes)
+- **Runtime**: Node.js 18
+- **Region**: us-central1
+
+### Audio File Support
+
+Currently supports WAV format audio files. Future versions will include:
+- MP3 support
+- AAC support
+- FLAC support
+
+### Performance Considerations
+
+- Maximum audio file size: 100MB
+- Concurrent executions: Limited to 10 instances
+- Processing time varies by audio length and complexity
+- Results cached in Firestore for subsequent access
+
+## Error Handling
+
+The service implements comprehensive error handling:
+
+1. **Validation Errors**: Invalid request parameters
+2. **Storage Errors**: File not found, access denied, format unsupported
+3. **Analysis Errors**: Audio processing failures, insufficient data
+4. **Database Errors**: Firestore write failures, query timeouts
+5. **Timeout Errors**: Long-running analysis timeout protection
+
+## Monitoring and Logging
+
+- Structured JSON logging for all operations
+- Request correlation IDs for tracing
+- Performance metrics for analysis duration
+- Error rates and failure categorization
+
+## Security
+
+- CORS enabled for web client access
+- Input validation for all endpoints
+- Rate limiting via Firebase Functions quotas
+- Audio file size restrictions
+
+## Testing
+
+The service includes:
+- Unit tests for core analysis algorithms
+- Integration tests for Firebase services
+- Mock audio data for consistent testing
+- Performance benchmarks
+
+## License
+
+MIT License

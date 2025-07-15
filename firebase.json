@@ -1,0 +1,23 @@
+{
+  "functions": [
+    {
+      "source": ".",
+      "runtime": "nodejs18",
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ],
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local",
+        "src",
+        "tsconfig.json",
+        ".eslintrc.js"
+      ],
+      "codebase": "default"
+    }
+  ]
+}
