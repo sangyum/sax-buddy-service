@@ -1,7 +1,5 @@
-import * as admin from "firebase-admin";
-
-type Timestamp = admin.firestore.Timestamp;
-import { ExtendedAudioAnalysis } from "./analysis";
+// Using Date instead of Firebase Timestamp for independence from firebase-admin
+import { ExtendedAudioAnalysis, Timestamp } from "./analysis";
 
 export type ProcessingStatus = "pending" | "processing" | "completed" | "failed";
 

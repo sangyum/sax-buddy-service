@@ -1,6 +1,5 @@
-import * as admin from "firebase-admin";
-
-type Timestamp = admin.firestore.Timestamp;
+// Using Date instead of Firebase Timestamp for independence from firebase-admin
+export type Timestamp = Date;
 
 export interface PitchIntonationAnalysis {
   pitchAccuracyDistribution: {

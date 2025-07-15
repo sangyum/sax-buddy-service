@@ -11,9 +11,6 @@ import {
   BasicAnalysis
 } from "../types";
 import { Logger } from "../utils/logger";
-import * as admin from "firebase-admin";
-
-type Timestamp = admin.firestore.Timestamp;
 
 // Import Essentia.js
 import * as EssentiaJS from "essentia.js";
@@ -110,7 +107,7 @@ export class SaxophoneAudioAnalyzer {
           nextLevelRecommendations: [],
         },
         duration: audioBuffer.length / this.sampleRate,
-        processedAt: admin.firestore.Timestamp.now(),
+        processedAt: new Date(),
         analysisVersion: "2.0.0",
         confidenceScores: {}
       };
@@ -325,8 +322,12 @@ export class SaxophoneAudioAnalyzer {
         error: error instanceof Error ? error.message : "Unknown error"
       });
       
-      // Fallback to safe default values
-      return this.getFallbackAnalysisResult(audioBuffer);
+      // Re-throw the error so higher-level functions can handle retry logic
+      if (error instanceof Error) {
+        throw new Error(`Essentia.js analysis failed: ${error.message}`);
+      } else {
+        throw new Error("Essentia.js analysis failed with unknown error");
+      }
     }
   }
 
@@ -345,28 +346,6 @@ export class SaxophoneAudioAnalyzer {
     return harmonics;
   }
 
-  private getFallbackAnalysisResult(audioBuffer: Float32Array): EssentiaAnalysisResult {
-    this.logger.warn("Using fallback analysis result due to Essentia.js error");
-    
-    // Return safe fallback values
-    const length = Math.min(100, Math.floor(audioBuffer.length / 1000));
-    return {
-      tempo: 120,
-      confidence: 0.5,
-      beats: Array.from({ length: Math.floor(length / 4) }, (_, i) => i * 0.5),
-      pitchTrack: Array.from({ length }, () => 220 + Math.random() * 440),
-      pitchConfidence: Array.from({ length }, () => 0.5),
-      onsets: Array.from({ length: Math.floor(length / 2) }, (_, i) => i * 0.25),
-      mfcc: Array.from({ length: 13 }, () => Math.random() * 2 - 1),
-      spectralCentroid: Array.from({ length }, () => 1000 + Math.random() * 2000),
-      spectralRolloff: Array.from({ length }, () => 2000 + Math.random() * 3000),
-      spectralFlux: Array.from({ length }, () => Math.random()),
-      harmonics: [1.0, 0.5, 0.3, 0.2, 0.1],
-      energy: Array.from({ length }, () => Math.random()),
-      zcr: Array.from({ length }, () => Math.random() * 0.1),
-      loudness: Array.from({ length }, () => Math.random())
-    };
-  }
 
   private async analyzePitchIntonation(
     audioBuffer: Float32Array,
