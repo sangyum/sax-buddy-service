@@ -223,42 +223,44 @@ export class AssessmentProcessor {
     let overallPerformanceScore = 0;
 
     if (completedExercises.length > 0) {
-      const scores = completedExercises.map(result => 
-        result.analysis!.performanceScore.categoryScores
+      const scores: ({ pitchIntonation: number; timingRhythm: number; toneQuality: number; technicalExecution: number; musicalExpression: number; consistency: number; } | undefined)[] = completedExercises.map(result => 
+        result.analysis?.performanceScore?.categoryScores
       );
 
+      const filteredScores = scores.filter((s): s is { pitchIntonation: number; timingRhythm: number; toneQuality: number; technicalExecution: number; musicalExpression: number; consistency: number; } => s !== undefined && s !== null);
+
       averageScores.pitchIntonation = this.calculateAverage(
-        scores.map(s => s.pitchIntonation)
+        filteredScores.map(s => s.pitchIntonation)
       );
       averageScores.timingRhythm = this.calculateAverage(
-        scores.map(s => s.timingRhythm)
+        filteredScores.map(s => s.timingRhythm)
       );
       averageScores.toneQuality = this.calculateAverage(
-        scores.map(s => s.toneQuality)
+        filteredScores.map(s => s.toneQuality)
       );
       averageScores.technicalExecution = this.calculateAverage(
-        scores.map(s => s.technicalExecution)
+        filteredScores.map(s => s.technicalExecution)
       );
       averageScores.musicalExpression = this.calculateAverage(
-        scores.map(s => s.musicalExpression)
+        filteredScores.map(s => s.musicalExpression)
       );
       averageScores.consistency = this.calculateAverage(
-        scores.map(s => s.consistency)
+        filteredScores.map(s => s.consistency)
       );
 
       overallPerformanceScore = this.calculateAverage(
         completedExercises.map(result => 
-          result.analysis!.performanceScore.overallScore
-        )
+          result.analysis?.performanceScore.overallScore
+        ).filter((s): s is number => s !== undefined && s !== null)
       );
     }
 
     // Aggregate feedback and recommendations
     const allFeedback = completedExercises.flatMap(result => 
-      result.analysis!.performanceScore.specificFeedback
+      result.analysis?.performanceScore?.specificFeedback || []
     );
     const allRecommendations = completedExercises.flatMap(result => 
-      result.analysis!.performanceScore.nextLevelRecommendations
+      result.analysis?.performanceScore?.nextLevelRecommendations || []
     );
 
     return {
@@ -300,7 +302,7 @@ export class AssessmentProcessor {
     completedExercises: ExerciseResult[]
   ): string[] {
     const allStrengths = completedExercises.flatMap(result => 
-      result.analysis!.performanceScore.strengthAreas
+      result.analysis?.performanceScore.strengthAreas || []
     );
     return this.deduplicateArray(allStrengths).slice(0, 5);
   }
@@ -309,7 +311,7 @@ export class AssessmentProcessor {
     completedExercises: ExerciseResult[]
   ): string[] {
     const allImprovements = completedExercises.flatMap(result => 
-      result.analysis!.performanceScore.improvementAreas
+      result.analysis?.performanceScore.improvementAreas || []
     );
     return this.deduplicateArray(allImprovements).slice(0, 5);
   }

@@ -134,63 +134,91 @@ export interface TechnicalExecutionAnalysis {
 }
 
 export interface MusicalExpressionAnalysis {
+  phrasing: {
+    phraseLengths: number[]; // in seconds
+    breathingPoints: number[]; // timestamps in seconds
+    phraseContour: Array<{
+      startTime: number;
+      endTime: number;
+      pitchContour: "ascending" | "descending" | "mixed" | "flat";
+      dynamicContour: "crescendo" | "decrescendo" | "steady" | "mixed";
+    }>;
+  };
+  dynamics: {
+    dynamicRange: {
+      minDecibels: number;
+      maxDecibels: number;
+      overallRange: number; // in dB
+    };
+    dynamicChanges: Array<{
+      time: number;
+      type: "crescendo" | "decrescendo" | "sudden_accent";
+      magnitude: number; // in dB
+    }>;
+    dynamicConsistency: number; // score 0-1
+  };
+  articulation: {
+    attackClarity: number; // score 0-1
+    noteSeparation: "legato" | "staccato" | "mixed";
+  };
+  vibrato: {
+    rate: number; // in Hz
+    depth: number; // in cents
+    consistency: number; // score 0-1
+    sections: Array<{ startTime: number; endTime: number }>;
+  };
   phrasingSophistication: {
     musicalSentenceStructure: number;
     breathingLogic: number;
     phraseShaping: number;
-    melodicArchConstruction: number;
   };
   dynamicContourComplexity: {
-    crescendoDecrescendoUse: number;
-    accentPlacement: number;
     dynamicShapingScore: number;
-    expressiveDynamicRange: number;
+    dynamicRangeUtilization: number;
   };
   stylisticAuthenticity: {
-    jazzIdiomAdherence: number;
-    classicalStyleAccuracy: number;
-    genreAppropriateOrnamentation: number;
     styleConsistency: number;
-  };
-  improvisationalCoherence: {
-    motivicDevelopment: number;
-    harmonicAwareness: number;
-    rhythmicVariation: number;
-    melodicLogic: number;
-    overallImprovisationScore: number;
+    genreAdherence: number;
   };
 }
 
 export interface PerformanceConsistencyAnalysis {
+  pitchConsistency: {
+    driftOverTime: number[]; // cents deviation from start
+    standardDeviationBySection: number[]; // std dev for each quarter of the performance
+    overallStability: number; // score 0-1
+  };
+  rhythmConsistency: {
+    tempoFluctuation: number[]; // bpm deviation from average
+    beatTimingDeviation: number[]; // ms deviation from grid
+    overallSteadiness: number; // score 0-1
+  };
+  toneConsistency: {
+    timbreVariability: number[]; // spectral centroid std dev by section
+    harmonicRichnessVariability: number[]; // harmonic richness std dev by section
+    overallUniformity: number; // score 0-1
+  };
+  errorAnalysis: {
+    errorCount: number;
+    errorDistribution: Array<{
+      time: number;
+      type: "pitch" | "rhythm" | "tone";
+      severity: number; // 0-1
+    }>;
+  };
+  endurancePatterns: {
+    consistencyThroughoutPerformance: number;
+    fatigueIndicators: number[]; // e.g., increase in error rate, decrease in dynamic range
+  };
+  recoverySpeed: {
+    recoveryEffectiveness: number; // score 0-1
+    errorImpactOnSubsequentPerformance: number; // score 0-1, lower is better
+  };
   errorFrequencyAndType: {
     missedNotes: number;
     crackedNotes: number;
     timingSlips: number;
-    intonationErrors: number;
-    errorDistribution: Array<{ 
-      time: number; 
-      type: string; 
-      severity: number; 
-    }>;
-  };
-  recoverySpeed: {
-    averageRecoveryTime: number;
-    recoveryEffectiveness: number;
-    errorImpactOnSubsequentPerformance: number;
-  };
-  endurancePatterns: {
-    performanceDegradationOverTime: number[];
-    fatigueIndicators: Array<{ 
-      metric: string; 
-      degradation: number; 
-    }>;
-    consistencyThroughoutPerformance: number;
-  };
-  difficultyScaling: {
-    successRateByDifficulty: Record<string, number>;
-    challengeAreaIdentification: string[];
-    improvementPotentialAreas: string[];
-    technicalLimitationsIdentified: string[];
+    otherErrors: number;
   };
 }
 

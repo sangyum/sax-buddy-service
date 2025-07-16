@@ -81,7 +81,7 @@ describe("SaxophoneAudioAnalyzer", () => {
     expect(result).toBeDefined();
     expect(result.pitchIntonation.pitchAccuracyDistribution.deviationStats.mean).toBeDefined();
     expect(result.timingRhythm.temporalAccuracy.overallTimingScore).toBeDefined();
-    expect(result.musicalExpression.improvisationalCoherence.overallImprovisationScore).toBeDefined();
+    expect(result.musicalExpression.phrasingSophistication.musicalSentenceStructure).toBeDefined();
   });
 
   test("should work identically with or without metadata", async () => {

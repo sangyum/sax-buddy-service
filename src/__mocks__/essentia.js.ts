@@ -9,148 +9,126 @@ export class Essentia {
   version = "0.1.3";
   algorithmNames = "mock-algorithms";
 
-  constructor(_wasmModule: EssentiaWASM) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  constructor(_: EssentiaWASM) {
     // Mock constructor
   }
 
   // Mock Essentia methods with realistic return values
-  arrayToVector(array: Float32Array): unknown {
-    return array; // Just return the array for testing
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  arrayToVector(_array: Float32Array): unknown {
+    return { delete: () => {} }; // Mock EssentiaVector with delete method
   }
 
-  vectorToArray(vector: unknown): Float32Array {
-    return vector as Float32Array;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  vectorToArray(_vector: unknown): Float32Array {
+    return new Float32Array(1024); // Return a mock array
   }
 
-  // Mock audio analysis algorithms
-  PitchYin(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  YinFFT(_spectrum: unknown, _frameSize: number, _sampleRate: number): unknown {
     return {
-      compute: (frame: Float32Array): number[] => {
-        // Return mock pitch values
-        return [440.0, 0.8]; // [frequency, confidence]
-      }
+      pitch: 440.0,
+      pitchConfidence: 0.8
     };
   }
 
-  RhythmExtractor2013(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  RhythmExtractor2013(_vector: unknown, _maxTempo: number, _method: string, _minTempo: number): unknown {
     return {
-      compute: (audio: Float32Array): number[] => {
-        // Return mock rhythm data: [tempo, confidence, beats...]
-        return [120.0, 0.9, 0.5, 1.0, 1.5, 2.0];
-      }
+      bpm: 120.0,
+      confidence: 0.9,
+      beats: [0.5, 1.0, 1.5, 2.0]
     };
   }
 
-  OnsetDetection(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  Onsets(_vector: unknown): unknown {
     return {
-      compute: (spectrum: Float32Array): number => {
-        return 0.5; // Mock onset detection value
-      }
+      onsets: [0.5, 1.0, 1.5, 2.0]
     };
   }
 
-  MFCC(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  MFCC(_spectrum: unknown, _numberBands: number, _numberCoeffs: number, _sampleRate: number): unknown {
     return {
-      compute: (spectrum: Float32Array): number[] => {
-        // Return mock MFCC coefficients
-        return new Array(13).fill(0).map((_, i) => Math.sin(i * 0.1));
-      }
+      mfcc: new Array(13).fill(0).map((_, i) => Math.sin(i * 0.1))
     };
   }
 
-  SpectralCentroid(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  SpectralCentroid(_spectrum: unknown, _sampleRate: number): unknown {
     return {
-      compute: (spectrum: Float32Array): number => {
-        return 1000.0; // Mock spectral centroid
-      }
+      spectralCentroid: 1000.0
     };
   }
 
-  SpectralRolloff(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  SpectralRolloff(_spectrum: unknown, _sampleRate: number): unknown {
     return {
-      compute: (spectrum: Float32Array): number => {
-        return 2000.0; // Mock spectral rolloff
-      }
+      spectralRolloff: 2000.0
     };
   }
 
-  SpectralFlux(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  SpectralFlux(): unknown {
     return {
-      compute: (spectrum: Float32Array): number => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      compute: (_spectrum: Float32Array): number => {
         return 0.3; // Mock spectral flux
       }
     };
   }
 
-  HarmonicPeaks(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  HarmonicPeaks(_spectrum: unknown, _pitch: number): unknown {
     return {
-      compute: (spectrum: Float32Array): number[] => {
-        // Return mock harmonic peaks
-        return [440.0, 880.0, 1320.0];
-      }
+      magnitudes: [440.0, 880.0, 1320.0]
     };
   }
 
-  InstantPower(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  Energy(_vector: unknown): unknown {
     return {
-      compute: (frame: Float32Array): number => {
-        return 0.5; // Mock power value
-      }
+      energy: 0.5
     };
   }
 
-  ZeroCrossingRate(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ZeroCrossingRate(_vector: Float32Array): unknown {
     return {
-      compute: (frame: Float32Array): number => {
-        return 0.1; // Mock zero crossing rate
-      }
+      zeroCrossingRate: 0.1
     };
   }
 
-  Loudness(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  Loudness(_vector: unknown, _sampleRate: number): unknown {
     return {
-      compute: (frame: Float32Array): number => {
-        return 0.7; // Mock loudness value
-      }
+      loudness: 0.7
     };
   }
 
-  Windowing(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  Windowing(_vector: unknown, _type: string, _size: number, _normalized: boolean, _normalizeGain: number, _zeroPhase: boolean): unknown {
     return {
-      compute: (frame: Float32Array): Float32Array => {
-        return frame; // Return the frame as-is for testing
-      }
+      frame: { delete: () => {} }
     };
   }
 
-  Spectrum(params: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  Spectrum(_vector: unknown, _size: number): unknown {
     return {
-      compute: (frame: Float32Array): Float32Array => {
-        // Return mock spectrum
-        const spectrum = new Float32Array(1024);
-        for (let i = 0; i < spectrum.length; i++) {
-          spectrum[i] = Math.random() * 0.5;
-        }
-        return spectrum;
-      }
+      spectrum: { delete: () => {} }
     };
   }
 
-  FrameGenerator(params: unknown): unknown {
-    return {
-      compute: (audio: Float32Array): Float32Array[] => {
-        // Return mock frames
-        const frameSize = 1024;
-        const frames: Float32Array[] = [];
-        for (let i = 0; i < audio.length; i += frameSize) {
-          const frame = audio.slice(i, i + frameSize);
-          if (frame.length === frameSize) {
-            frames.push(frame);
-          }
-        }
-        return frames;
-      }
-    };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  FrameGenerator(_audio: Float32Array, _frameSize: number, _hopSize: number): unknown[] {
+    const frames: unknown[] = [];
+    for (let i = 0; i < 10; i++) {
+      frames.push({ delete: () => {} });
+    }
+    return frames;
   }
 
   // Add any other Essentia methods that might be used

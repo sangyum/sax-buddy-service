@@ -13,6 +13,16 @@ export interface EssentiaAnalysisResult {
   energy: number[];
   zcr: number[];
   loudness: number[];
+  vibratoCharacteristics: {
+    vibratoRate: number;
+    vibratoDepth: number;
+    vibratoControl: number;
+    vibratoTiming: Array<{ 
+      start: number; 
+      end: number; 
+      quality: number; 
+    }>;
+  };
 }
 
 export interface ArticulationClarityAnalysis {
