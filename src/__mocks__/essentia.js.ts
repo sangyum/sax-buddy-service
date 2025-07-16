@@ -22,7 +22,12 @@ export class Essentia {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   vectorToArray(_vector: unknown): Float32Array {
-    return new Float32Array(1024); // Return a mock array
+    // Return a mock array with some non-zero values to pass validation
+    const array = new Float32Array(1024);
+    for (let i = 0; i < 1024; i++) {
+      array[i] = Math.sin(2 * Math.PI * 440 * i / 44100) * 0.5; // Mock audio data
+    }
+    return array;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -59,14 +64,14 @@ export class Essentia {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   SpectralCentroid(_spectrum: unknown, _sampleRate: number): unknown {
     return {
-      spectralCentroid: 1000.0
+      spectralCentroid: 0.6 // Normalized spectral centroid
     };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   SpectralRolloff(_spectrum: unknown, _sampleRate: number): unknown {
     return {
-      spectralRolloff: 2000.0
+      spectralRolloff: 0.7 // Normalized spectral rolloff
     };
   }
 
@@ -83,7 +88,7 @@ export class Essentia {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   HarmonicPeaks(_spectrum: unknown, _pitch: number): unknown {
     return {
-      magnitudes: [440.0, 880.0, 1320.0]
+      magnitudes: [0.8, 0.4, 0.2] // Normalized harmonic magnitudes
     };
   }
 

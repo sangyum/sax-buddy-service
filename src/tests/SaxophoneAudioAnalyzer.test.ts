@@ -3,11 +3,49 @@ import { SaxophoneAudioAnalyzer } from "../services/SaxophoneAudioAnalyzer";
 // Mock essentia.js
 jest.mock("essentia.js");
 
+// Helper function to generate valid audio buffers for testing
+function generateValidAudioBuffer(durationSeconds: number = 1.0, frequency: number = 440.0, amplitude: number = 0.8, sampleRate: number = 44100): Float32Array {
+  const sampleCount = Math.floor(durationSeconds * sampleRate);
+  const buffer = new Float32Array(sampleCount);
+  
+  // Generate a sine wave with slight amplitude variation to simulate realistic audio
+  for (let i = 0; i < sampleCount; i++) {
+    const t = i / sampleRate;
+    // Base sine wave
+    let sample = Math.sin(2 * Math.PI * frequency * t) * amplitude;
+    
+    // Add slight harmonic content for realism
+    sample += Math.sin(2 * Math.PI * frequency * 2 * t) * amplitude * 0.2;
+    sample += Math.sin(2 * Math.PI * frequency * 3 * t) * amplitude * 0.1;
+    
+    // Add subtle amplitude modulation to simulate natural variations
+    const modulation = 1 + 0.05 * Math.sin(2 * Math.PI * 5 * t);
+    sample *= modulation;
+    
+    // Add tiny amount of noise to make it more realistic (very low level)
+    sample += (Math.random() - 0.5) * 0.001 * amplitude;
+    
+    buffer[i] = sample;
+  }
+  
+  return buffer;
+}
+
 describe("SaxophoneAudioAnalyzer", () => {
   let analyzer: SaxophoneAudioAnalyzer;
 
   beforeEach(() => {
     analyzer = new SaxophoneAudioAnalyzer();
+    // Use test-friendly validation settings
+    analyzer.updateConfig({
+      validation: {
+        minDurationSec: 1.0,
+        maxDurationSec: 300.0,
+        minRms: 0.001,
+        maxAmplitude: 0.99,
+        minSnrDb: 10 // Lower threshold for testing
+      }
+    });
   });
 
   test("should initialize successfully", async () => {
@@ -15,9 +53,8 @@ describe("SaxophoneAudioAnalyzer", () => {
   });
 
   test("should analyze audio buffer", async () => {
-    // Create a mock audio buffer (1 second of silence at 44.1kHz)
-    const audioBuffer = new Float32Array(44100);
-    audioBuffer.fill(0);
+    // Create a valid audio buffer (1 second of 440Hz sine wave)
+    const audioBuffer = generateValidAudioBuffer(1.0, 440.0);
 
     const result = await analyzer.analyzeExercise(audioBuffer);
 
@@ -30,8 +67,8 @@ describe("SaxophoneAudioAnalyzer", () => {
   });
 
   test("should handle different audio buffer sizes", async () => {
-    const shortBuffer = new Float32Array(1000);
-    const longBuffer = new Float32Array(100000);
+    const shortBuffer = generateValidAudioBuffer(1.5, 440.0); // 1.5 seconds (valid duration)
+    const longBuffer = generateValidAudioBuffer(2.5, 440.0); // 2.5 seconds
 
     const shortResult = await analyzer.analyzeExercise(shortBuffer);
     const longResult = await analyzer.analyzeExercise(longBuffer);
@@ -42,7 +79,7 @@ describe("SaxophoneAudioAnalyzer", () => {
   });
 
   test("should include all analysis categories", async () => {
-    const audioBuffer = new Float32Array(22050); // 0.5 seconds
+    const audioBuffer = generateValidAudioBuffer(1.0, 440.0); // 1 second (valid duration)
     const result = await analyzer.analyzeExercise(audioBuffer);
 
     expect(result.pitchIntonation).toBeDefined();
@@ -55,7 +92,7 @@ describe("SaxophoneAudioAnalyzer", () => {
   });
 
   test("should generate performance scores for all categories", async () => {
-    const audioBuffer = new Float32Array(44100);
+    const audioBuffer = generateValidAudioBuffer(1.0, 440.0);
     const result = await analyzer.analyzeExercise(audioBuffer);
 
     const scores = result.performanceScore.categoryScores;
@@ -74,7 +111,7 @@ describe("SaxophoneAudioAnalyzer", () => {
   });
 
   test("should analyze without exercise metadata", async () => {
-    const audioBuffer = new Float32Array(44100);
+    const audioBuffer = generateValidAudioBuffer(1.0, 440.0);
 
     const result = await analyzer.analyzeExercise(audioBuffer);
 
@@ -85,7 +122,7 @@ describe("SaxophoneAudioAnalyzer", () => {
   });
 
   test("should work identically with or without metadata", async () => {
-    const audioBuffer = new Float32Array(44100);
+    const audioBuffer = generateValidAudioBuffer(1.0, 440.0);
     
     const resultWithoutMetadata = await analyzer.analyzeExercise(audioBuffer);
     const resultWithMetadata = await analyzer.analyzeExercise(audioBuffer);

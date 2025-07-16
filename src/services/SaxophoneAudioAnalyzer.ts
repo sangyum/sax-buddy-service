@@ -25,12 +25,100 @@ import * as EssentiaJS from "essentia.js";
 const { Essentia, EssentiaWASM } = EssentiaJS;
 
 
+interface AnalysisConfig {
+  sampleRate: number;
+  frameSize: number;
+  hopSize: number;
+  pitchTracking: {
+    smoothingFactor: number;
+    medianFilterSize: number;
+    confidenceThreshold: number;
+    octaveErrorThreshold: number;
+  };
+  vibrato: {
+    minRate: number;
+    maxRate: number;
+    minDepth: number;
+    qualityThreshold: number;
+  };
+  onset: {
+    threshold: number;
+    minSilenceLength: number;
+  };
+  validation: {
+    minDurationSec: number;
+    maxDurationSec: number;
+    minRms: number;
+    maxAmplitude: number;
+    minSnrDb: number;
+  };
+}
+
 export class SaxophoneAudioAnalyzer {
   private logger = new Logger("SaxophoneAudioAnalyzer");
   private isInitialized = false;
-  private sampleRate = 44100; // Default sample rate
   private essentia: EssentiaJS.Essentia | null = null;
   private essentiaWasm: EssentiaJS.EssentiaWASM | null = null;
+  
+  private config: AnalysisConfig = {
+    sampleRate: 44100,
+    frameSize: 2048,
+    hopSize: 512,
+    pitchTracking: {
+      smoothingFactor: 0.3,
+      medianFilterSize: 5,
+      confidenceThreshold: 0.5,
+      octaveErrorThreshold: 0.1
+    },
+    vibrato: {
+      minRate: 3,
+      maxRate: 10,
+      minDepth: 10,
+      qualityThreshold: 0.3
+    },
+    onset: {
+      threshold: 1.5,
+      minSilenceLength: 0.1
+    },
+    validation: {
+      minDurationSec: 1.0,
+      maxDurationSec: 300.0,
+      minRms: 0.001,
+      maxAmplitude: 0.99,
+      minSnrDb: 20
+    }
+  };
+
+  private get sampleRate(): number {
+    return this.config.sampleRate;
+  }
+
+  updateConfig(partialConfig: Partial<AnalysisConfig>): void {
+    this.config = {
+      ...this.config,
+      ...partialConfig,
+      pitchTracking: {
+        ...this.config.pitchTracking,
+        ...partialConfig.pitchTracking
+      },
+      vibrato: {
+        ...this.config.vibrato,
+        ...partialConfig.vibrato
+      },
+      onset: {
+        ...this.config.onset,
+        ...partialConfig.onset
+      },
+      validation: {
+        ...this.config.validation,
+        ...partialConfig.validation
+      }
+    };
+  }
+
+  getConfig(): AnalysisConfig {
+    return { ...this.config };
+  }
 
   async initialize(): Promise<void> {
     if (!this.isInitialized) {
@@ -63,9 +151,17 @@ export class SaxophoneAudioAnalyzer {
   ): Promise<ExtendedAudioAnalysis> {
     await this.initialize();
     
+    // Validate input audio buffer
+    const validationResult = this.validateAudioBuffer(audioBuffer);
+    if (!validationResult.isValid) {
+      throw new Error(`Invalid audio buffer: ${validationResult.error}`);
+    }
+    
     this.logger.info("Starting comprehensive audio analysis", {
       bufferLength: audioBuffer.length,
-      duration: audioBuffer.length / this.sampleRate
+      duration: audioBuffer.length / this.sampleRate,
+      snr: validationResult.snr,
+      rms: validationResult.rms
     });
 
     try {
@@ -125,6 +221,74 @@ export class SaxophoneAudioAnalyzer {
     }
   }
 
+  private validateAudioBuffer(audioBuffer: Float32Array): {
+    isValid: boolean;
+    error?: string;
+    snr?: number;
+    rms?: number;
+  } {
+    // Check if buffer exists and is not empty
+    if (!audioBuffer || audioBuffer.length === 0) {
+      return { isValid: false, error: "Audio buffer is empty or null" };
+    }
+
+    // Check minimum duration
+    const duration = audioBuffer.length / this.sampleRate;
+    if (duration < this.config.validation.minDurationSec) {
+      return { isValid: false, error: `Audio too short: ${duration.toFixed(2)}s (minimum ${this.config.validation.minDurationSec}s required)` };
+    }
+
+    // Check maximum duration
+    if (duration > this.config.validation.maxDurationSec) {
+      return { isValid: false, error: `Audio too long: ${duration.toFixed(2)}s (maximum ${this.config.validation.maxDurationSec}s)` };
+    }
+
+    // Check for NaN or infinite values
+    for (let i = 0; i < audioBuffer.length; i++) {
+      const sample = audioBuffer[i];
+      if (sample === undefined || !isFinite(sample)) {
+        return { isValid: false, error: `Invalid sample at index ${i}: ${sample}` };
+      }
+    }
+
+    // Calculate RMS level
+    const rms = Math.sqrt(
+      audioBuffer.reduce((sum, sample) => sum + sample * sample, 0) / audioBuffer.length
+    );
+
+    // Check if signal is too quiet
+    if (rms < this.config.validation.minRms) {
+      return { isValid: false, error: `Signal too quiet: RMS = ${rms.toFixed(6)}` };
+    }
+
+    // Check if signal is clipping (avoid stack overflow with large arrays)
+    let maxAmplitude = 0;
+    for (let i = 0; i < audioBuffer.length; i++) {
+      const sample = audioBuffer[i];
+      if (sample !== undefined) {
+        const absValue = Math.abs(sample);
+        if (absValue > maxAmplitude) {
+          maxAmplitude = absValue;
+        }
+      }
+    }
+    if (maxAmplitude > this.config.validation.maxAmplitude) {
+      return { isValid: false, error: `Signal clipping detected: max amplitude = ${maxAmplitude.toFixed(3)}` };
+    }
+
+    // Estimate SNR (simple noise floor estimation)
+    const sortedSamples = [...audioBuffer].map(Math.abs).sort((a, b) => a - b);
+    const noiseFloor = sortedSamples[Math.floor(sortedSamples.length * 0.1)] || 1e-10; // 10th percentile
+    const snr = 20 * Math.log10(rms / (noiseFloor + 1e-10));
+
+    // Check SNR threshold
+    if (snr < this.config.validation.minSnrDb) {
+      return { isValid: false, error: `Poor signal quality: SNR = ${snr.toFixed(1)}dB (minimum ${this.config.validation.minSnrDb}dB)` };
+    }
+
+    return { isValid: true, snr, rms };
+  }
+
   private performBasicAnalysisFromResult(analysisResult: EssentiaAnalysisResult): BasicAnalysis {
     return {
       tempo: {
@@ -175,8 +339,8 @@ export class SaxophoneAudioAnalyzer {
       );
 
       // 2. Pitch Analysis using YinFFT
-      const frameSize = 2048;
-      const hopSize = 512;
+      const frameSize = this.config.frameSize;
+      const hopSize = this.config.hopSize;
       const frames = (this.essentia as EssentiaJS.Essentia).FrameGenerator(audioBuffer, frameSize, hopSize);
       
       const pitchTrack: number[] = [];
@@ -193,61 +357,153 @@ export class SaxophoneAudioAnalyzer {
 
       // Process each frame
       const framesSize = frames?.length || 0;
+      let processedFrames = 0;
+      let skippedFrames = 0;
+      
       for (let i = 0; i < framesSize; i++) {
-        const frame = frames[i];
-        if (!frame) continue;
-        
-        const frameArray = this.essentia.vectorToArray(frame as EssentiaJS.EssentiaVector);
-        
-        // Apply windowing
-        const windowedFrame = this.essentia.Windowing(
-          this.essentia.arrayToVector(frameArray),
-          "hann",
-          frameSize,
-          false, // normalized
-          1.0,   // size
-          true   // zeroPhase
-        );
-
-        // Compute spectrum
-        const spectrumResult = this.essentia.Spectrum(
-          windowedFrame.frame,
-          frameSize
-        );
-
-        // Pitch detection
-        const pitchResult = this.essentia.YinFFT(
-          spectrumResult.spectrum,
-          frameSize,
-          this.sampleRate
-        );
-        
-        pitchTrack.push(pitchResult.pitch);
-        pitchConfidence.push(pitchResult.pitchConfidence);
-
-        // Spectral features
-        const centroid = this.essentia.SpectralCentroid(spectrumResult.spectrum, this.sampleRate);
-        spectralFeatures.centroid.push(centroid.spectralCentroid);
-
-        const rolloff = this.essentia.SpectralRolloff(spectrumResult.spectrum, this.sampleRate);
-        spectralFeatures.rolloff.push(rolloff.spectralRolloff);
-
-        const energy = this.essentia.Energy ? this.essentia.Energy(windowedFrame.frame) : { energy: Math.random() };
-        spectralFeatures.energy.push(energy.energy);
-
-        const zcr = this.essentia.ZeroCrossingRate(frameArray);
-        spectralFeatures.zcr.push(zcr.zeroCrossingRate);
-
-        const mfccResult = this.essentia.MFCC(spectrumResult.spectrum, 40, 13, this.sampleRate);
-        spectralFeatures.mfcc.push(Array.from(mfccResult.mfcc || []));
-
-        if (pitchResult.pitch > 0) {
-          const harmonicPeaks = this.essentia.HarmonicPeaks(
-            spectrumResult.spectrum,
-            pitchResult.pitch
+        try {
+          const frame = frames[i];
+          if (!frame) {
+            skippedFrames++;
+            continue;
+          }
+          
+          const frameArray = this.essentia.vectorToArray(frame as EssentiaJS.EssentiaVector);
+          
+          // Validate frame data
+          if (!frameArray || frameArray.length === 0) {
+            skippedFrames++;
+            continue;
+          }
+          
+          // Check for invalid values in frame
+          const hasValidData = Array.from(frameArray).some(sample => isFinite(sample) && sample !== 0);
+          if (!hasValidData) {
+            skippedFrames++;
+            continue;
+          }
+          
+          // Apply windowing
+          const windowedFrame = this.essentia.Windowing(
+            this.essentia.arrayToVector(frameArray),
+            "hann",
+            frameSize,
+            false, // normalized
+            1.0,   // size
+            true   // zeroPhase
           );
-          spectralFeatures.harmonics.push(Array.from(harmonicPeaks.magnitudes || []));
+
+          // Compute spectrum
+          const spectrumResult = this.essentia.Spectrum(
+            windowedFrame.frame,
+            frameSize
+          );
+
+          // Pitch detection
+          const pitchResult = this.essentia.YinFFT(
+            spectrumResult.spectrum,
+            frameSize,
+            this.sampleRate
+          );
+          
+          // Validate pitch result
+          const pitch = pitchResult.pitch;
+          const confidence = pitchResult.pitchConfidence;
+          
+          if (isFinite(pitch) && pitch >= 0) {
+            pitchTrack.push(pitch);
+            pitchConfidence.push(isFinite(confidence) ? confidence : 0);
+          } else {
+            pitchTrack.push(0); // Unvoiced frame
+            pitchConfidence.push(0);
+          }
+
+          // Spectral features
+          try {
+            const centroid = this.essentia.SpectralCentroid(spectrumResult.spectrum, this.sampleRate);
+            spectralFeatures.centroid.push(isFinite(centroid.spectralCentroid) ? centroid.spectralCentroid : 0);
+          } catch (error) {
+            spectralFeatures.centroid.push(0);
+          }
+
+          try {
+            const rolloff = this.essentia.SpectralRolloff(spectrumResult.spectrum, this.sampleRate);
+            spectralFeatures.rolloff.push(isFinite(rolloff.spectralRolloff) ? rolloff.spectralRolloff : 0);
+          } catch (error) {
+            spectralFeatures.rolloff.push(0);
+          }
+
+          try {
+            const energy = this.essentia.Energy ? this.essentia.Energy(windowedFrame.frame) : { energy: 0.5 };
+            spectralFeatures.energy.push(isFinite(energy.energy) ? energy.energy : 0.5);
+          } catch (error) {
+            spectralFeatures.energy.push(0.5);
+          }
+
+          try {
+            const zcr = this.essentia.ZeroCrossingRate(frameArray);
+            spectralFeatures.zcr.push(isFinite(zcr.zeroCrossingRate) ? zcr.zeroCrossingRate : 0);
+          } catch (error) {
+            spectralFeatures.zcr.push(0);
+          }
+
+          try {
+            const mfccResult = this.essentia.MFCC(spectrumResult.spectrum, 40, 13, this.sampleRate);
+            const mfccArray = Array.from(mfccResult.mfcc || []);
+            const validMfcc = mfccArray.map(coeff => isFinite(coeff) ? coeff : 0);
+            spectralFeatures.mfcc.push(validMfcc);
+          } catch (error) {
+            spectralFeatures.mfcc.push(new Array(13).fill(0));
+          }
+
+          if (pitch > 0) {
+            try {
+              const harmonicPeaks = this.essentia.HarmonicPeaks(
+                spectrumResult.spectrum,
+                pitch
+              );
+              const harmonicsArray = Array.from(harmonicPeaks.magnitudes || []);
+              const validHarmonics = harmonicsArray.map(mag => isFinite(mag) ? mag : 0);
+              spectralFeatures.harmonics.push(validHarmonics);
+            } catch (error) {
+              spectralFeatures.harmonics.push([]);
+            }
+          }
+          
+          processedFrames++;
+          
+        } catch (error) {
+          // Log frame processing error but continue
+          this.logger.error(`Frame processing error at index ${i}`, {
+            error: error instanceof Error ? error.message : "Unknown error",
+            frameIndex: i,
+            totalFrames: framesSize
+          });
+          
+          // Add default values for failed frame
+          pitchTrack.push(0);
+          pitchConfidence.push(0);
+          spectralFeatures.centroid.push(0);
+          spectralFeatures.rolloff.push(0);
+          spectralFeatures.energy.push(0.5);
+          spectralFeatures.zcr.push(0);
+          spectralFeatures.mfcc.push(new Array(13).fill(0));
+          
+          skippedFrames++;
         }
+      }
+      
+      // Log processing statistics
+      this.logger.info("Frame processing completed", {
+        totalFrames: framesSize,
+        processedFrames,
+        skippedFrames,
+        successRate: processedFrames / framesSize
+      });
+      
+      // Validate minimum processed frames
+      if (processedFrames < framesSize * 0.5) {
+        throw new Error(`Too many frames failed processing: ${processedFrames}/${framesSize} successful`);
       }
 
       // 3. Onset Detection
@@ -271,11 +527,14 @@ export class SaxophoneAudioAnalyzer {
       const meanMfcc = this.calculateMeanVector(spectralFeatures.mfcc);
       const meanHarmonics = this.calculateMeanVector(spectralFeatures.harmonics);
 
+      // Apply pitch tracking smoothing
+      const smoothedPitchTrack = this.smoothPitchTrack(pitchTrack, pitchConfidence);
+      
       return {
         tempo: rhythmResult.bpm || 120,
         confidence: rhythmResult.confidence || 0.5,
         beats: Array.from(rhythmResult.beats || []),
-        pitchTrack: pitchTrack.filter(p => p > 0), // Remove unvoiced frames
+        pitchTrack: smoothedPitchTrack,
         pitchConfidence,
         onsets: Array.from(onsetResult.onsets || []),
         mfcc: meanMfcc,
@@ -322,6 +581,177 @@ export class SaxophoneAudioAnalyzer {
     }
 
     return meanVector;
+  }
+
+  private smoothPitchTrack(pitchTrack: number[], pitchConfidence: number[]): number[] {
+    if (pitchTrack.length === 0) return [];
+    
+    // Step 1: Remove octave errors
+    const octaveCorrectedTrack = this.correctOctaveErrors(pitchTrack, pitchConfidence);
+    
+    // Step 2: Apply median filter for outlier removal
+    const medianFilteredTrack = this.applyMedianFilter(octaveCorrectedTrack, this.config.pitchTracking.medianFilterSize);
+    
+    // Step 3: Apply confidence-weighted smoothing
+    const smoothedTrack = this.applyConfidenceWeightedSmoothing(medianFilteredTrack, pitchConfidence);
+    
+    // Step 4: Fill gaps with interpolation
+    const interpolatedTrack = this.interpolatePitchGaps(smoothedTrack);
+    
+    return interpolatedTrack;
+  }
+
+  private correctOctaveErrors(pitchTrack: number[], pitchConfidence: number[]): number[] {
+    if (pitchTrack.length < 3) return pitchTrack;
+    
+    const correctedTrack = [...pitchTrack];
+    const windowSize = 5;
+    
+    for (let i = windowSize; i < correctedTrack.length - windowSize; i++) {
+      const current = correctedTrack[i];
+      if (current === undefined || current <= 0) continue;
+      
+      // Get surrounding valid pitches
+      const surrounding = [];
+      for (let j = Math.max(0, i - windowSize); j <= Math.min(correctedTrack.length - 1, i + windowSize); j++) {
+        const value = correctedTrack[j];
+        if (j !== i && value !== undefined && value > 0) {
+          surrounding.push(value);
+        }
+      }
+      
+      if (surrounding.length < 3) continue;
+      
+      const medianSurrounding = this.calculateMedian(surrounding);
+      
+      // Check for octave errors (2x or 0.5x frequency)
+      const ratioUp = current / medianSurrounding;
+      const ratioDown = medianSurrounding / current;
+      const threshold = this.config.pitchTracking.octaveErrorThreshold;
+      
+      if (ratioUp > (2.0 - threshold) && ratioUp < (2.0 + threshold)) {
+        // Octave too high
+        correctedTrack[i] = current / 2;
+      } else if (ratioDown > (2.0 - threshold) && ratioDown < (2.0 + threshold)) {
+        // Octave too low
+        correctedTrack[i] = current * 2;
+      }
+    }
+    
+    return correctedTrack;
+  }
+
+  private applyMedianFilter(pitchTrack: number[], windowSize: number): number[] {
+    if (pitchTrack.length === 0) return [];
+    
+    const filtered = [...pitchTrack];
+    const halfWindow = Math.floor(windowSize / 2);
+    
+    for (let i = halfWindow; i < pitchTrack.length - halfWindow; i++) {
+      const window = [];
+      for (let j = i - halfWindow; j <= i + halfWindow; j++) {
+        const value = pitchTrack[j];
+        if (value !== undefined && value > 0) {
+          window.push(value);
+        }
+      }
+      
+      if (window.length >= 3) {
+        filtered[i] = this.calculateMedian(window);
+      }
+    }
+    
+    return filtered;
+  }
+
+  private applyConfidenceWeightedSmoothing(pitchTrack: number[], pitchConfidence: number[]): number[] {
+    if (pitchTrack.length === 0) return [];
+    
+    const smoothed = [...pitchTrack];
+    const alpha = this.config.pitchTracking.smoothingFactor;
+    
+    for (let i = 1; i < pitchTrack.length; i++) {
+      const currentPitch = pitchTrack[i];
+      const previousPitch = smoothed[i - 1];
+      
+      if (currentPitch === undefined || currentPitch <= 0) continue;
+      
+      const currentConfidence = pitchConfidence[i] || 0;
+      const previousConfidence = pitchConfidence[i - 1] || 0;
+      
+      // Weight the smoothing based on confidence
+      const weight = Math.min(currentConfidence, previousConfidence);
+      const effectiveAlpha = alpha * weight;
+      
+      if (previousPitch !== undefined && previousPitch > 0) {
+        smoothed[i] = effectiveAlpha * previousPitch + (1 - effectiveAlpha) * currentPitch;
+      }
+    }
+    
+    return smoothed;
+  }
+
+  private interpolatePitchGaps(pitchTrack: number[]): number[] {
+    if (pitchTrack.length === 0) return [];
+    
+    const interpolated = [...pitchTrack];
+    
+    for (let i = 1; i < pitchTrack.length - 1; i++) {
+      const currentPitch = pitchTrack[i];
+      if (currentPitch === undefined || currentPitch <= 0) {
+        // Find the nearest valid pitches before and after
+        let beforeIndex = -1;
+        let afterIndex = -1;
+        
+        for (let j = i - 1; j >= 0; j--) {
+          const value = pitchTrack[j];
+          if (value !== undefined && value > 0) {
+            beforeIndex = j;
+            break;
+          }
+        }
+        
+        for (let j = i + 1; j < pitchTrack.length; j++) {
+          const value = pitchTrack[j];
+          if (value !== undefined && value > 0) {
+            afterIndex = j;
+            break;
+          }
+        }
+        
+        // Interpolate if we have both before and after values
+        if (beforeIndex !== -1 && afterIndex !== -1) {
+          const beforePitch = pitchTrack[beforeIndex];
+          const afterPitch = pitchTrack[afterIndex];
+          
+          if (beforePitch !== undefined && afterPitch !== undefined) {
+            const ratio = (i - beforeIndex) / (afterIndex - beforeIndex);
+            
+            // Linear interpolation in log space (geometric mean)
+            interpolated[i] = Math.exp(
+              Math.log(beforePitch) + ratio * (Math.log(afterPitch) - Math.log(beforePitch))
+            );
+          }
+        }
+      }
+    }
+    
+    return interpolated;
+  }
+
+  private calculateMedian(values: number[]): number {
+    if (values.length === 0) return 0;
+    
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    
+    if (sorted.length % 2 === 0) {
+      const left = sorted[middle - 1];
+      const right = sorted[middle];
+      return (left !== undefined && right !== undefined) ? (left + right) / 2 : 0;
+    } else {
+      return sorted[middle] || 0;
+    }
   }
 
 
@@ -1164,11 +1594,11 @@ export class SaxophoneAudioAnalyzer {
     
     // Analyze stability across dynamics (simplified - would need dynamic level info)
     const dynamicStability = {
-      pp: 0.75 + Math.random() * 0.1,
-      p: 0.80 + Math.random() * 0.1,
-      mf: 0.85 + Math.random() * 0.1,
-      f: 0.80 + Math.random() * 0.1,
-      ff: 0.75 + Math.random() * 0.1
+      pp: 0.75,
+      p: 0.80,
+      mf: 0.85,
+      f: 0.80,
+      ff: 0.75
     };
     
     // Calculate overall timbral uniformity
@@ -1356,8 +1786,8 @@ export class SaxophoneAudioAnalyzer {
     // Convert lag to rate (assuming 100Hz analysis rate)
     const rate = 100 / (bestPeak.index + 1); // Hz
     
-    // Check if rate is in typical vibrato range (4-8 Hz)
-    if (rate < 3 || rate > 10) {
+    // Check if rate is in typical vibrato range
+    if (rate < this.config.vibrato.minRate || rate > this.config.vibrato.maxRate) {
       return { isVibrato: false, rate: 0, depth: 0, quality: 0 };
     }
     
@@ -1369,7 +1799,7 @@ export class SaxophoneAudioAnalyzer {
     const quality = autocorr[bestPeak.index + 1] || 0; // Higher correlation = better quality
     
     return {
-      isVibrato: depth > 10 && quality > 0.3, // Minimum depth and quality thresholds
+      isVibrato: depth > this.config.vibrato.minDepth && quality > this.config.vibrato.qualityThreshold,
       rate,
       depth,
       quality
@@ -1814,7 +2244,7 @@ export class SaxophoneAudioAnalyzer {
 
   // Helper methods for rule-based analysis
   private analyzePhrasing(onsets: number[], pitchTrack: number[], energy: number[]): MusicalExpressionAnalysis["phrasing"] {
-    const phraseBreaks = this.detectPhraseBreaks(onsets, 1.5); // 1.5s threshold for a break
+    const phraseBreaks = this.detectPhraseBreaks(onsets, this.config.onset.threshold);
     const phraseLengths = this.calculatePhraseLengths(onsets, phraseBreaks);
     const phraseContour = this.analyzePhraseContours(onsets, pitchTrack, energy, phraseBreaks);
 
