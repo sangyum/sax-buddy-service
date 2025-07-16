@@ -5,7 +5,7 @@ export class Logger {
     this.context = context;
   }
 
-  info(message: string, metadata?: Record<string, any>): void {
+  info(message: string, metadata?: Record<string, unknown>): void {
     console.log(JSON.stringify({
       level: "info",
       context: this.context,
@@ -15,7 +15,7 @@ export class Logger {
     }));
   }
 
-  warn(message: string, metadata?: Record<string, any>): void {
+  warn(message: string, metadata?: Record<string, unknown>): void {
     console.warn(JSON.stringify({
       level: "warn",
       context: this.context,
@@ -25,7 +25,7 @@ export class Logger {
     }));
   }
 
-  error(message: string, metadata?: Record<string, any>): void {
+  error(message: string, metadata?: Record<string, unknown>): void {
     console.error(JSON.stringify({
       level: "error",
       context: this.context,
@@ -35,7 +35,7 @@ export class Logger {
     }));
   }
 
-  debug(message: string, metadata?: Record<string, any>): void {
+  debug(message: string, metadata?: Record<string, unknown>): void {
     if (process.env.NODE_ENV === "development") {
       console.debug(JSON.stringify({
         level: "debug",

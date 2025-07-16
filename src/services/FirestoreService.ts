@@ -85,7 +85,10 @@ export class FirestoreService {
 
       const docRef = assessmentQuery.docs[0].ref;
       
-      const updateData: any = {
+      const updateData: {
+        overallStatus: ProcessingStatus;
+        analyzedAt?: admin.firestore.Timestamp;
+      } = {
         overallStatus: status
       };
 
@@ -133,7 +136,11 @@ export class FirestoreService {
 
       const docRef = assessmentQuery.docs[0].ref;
       
-      const updateData: any = {
+      const updateData: {
+        overallStatus: ProcessingStatus;
+        summary: AssessmentSummary;
+        analyzedAt: admin.firestore.Timestamp;
+      } = {
         overallStatus: status,
         summary,
         analyzedAt: admin.firestore.Timestamp.now()

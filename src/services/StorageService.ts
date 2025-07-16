@@ -175,29 +175,19 @@ export class StorageService {
 
   async uploadAnalysisResults(
     exerciseId: string, 
-    results: any, 
-    format: "json" | "csv" = "json"
+    results: Record<string, unknown>
   ): Promise<string> {
     try {
       this.logger.debug("Uploading analysis results", { 
-        exerciseId, 
-        format 
+        exerciseId
       });
 
-      const fileName = `analysis-results/${exerciseId}.${format}`;
+      const fileName = `analysis-results/${exerciseId}.json`;
       const bucket = this.storage.bucket();
       const file = bucket.file(fileName);
 
-      let content: string;
-      let contentType: string;
-
-      if (format === "json") {
-        content = JSON.stringify(results, null, 2);
-        contentType = "application/json";
-      } else {
-        content = this.convertToCSV(results);
-        contentType = "text/csv";
-      }
+      const content = JSON.stringify(results, null, 2);
+      const contentType = "application/json";
 
       await file.save(content, {
         metadata: {
@@ -226,35 +216,10 @@ export class StorageService {
     } catch (error) {
       this.logger.error("Failed to upload analysis results", { 
         exerciseId,
-        format,
         error: error instanceof Error ? error.message : "Unknown error"
       });
       throw new Error(`Failed to upload analysis results: ${error}`);
     }
   }
 
-  private convertToCSV(data: any): string {
-    // Basic CSV conversion - in practice you'd want a more robust implementation
-    if (Array.isArray(data)) {
-      if (data.length === 0) return "";
-      
-      const headers = Object.keys(data[0]);
-      const csvRows = [
-        headers.join(","),
-        ...data.map(row => 
-          headers.map(header => 
-            JSON.stringify(row[header] ?? "")
-          ).join(",")
-        )
-      ];
-      
-      return csvRows.join("\n");
-    } else {
-      // Convert object to key-value CSV
-      const entries = Object.entries(data);
-      return "Key,Value\n" + entries.map(([key, value]) => 
-        `"${key}","${JSON.stringify(value)}"`
-      ).join("\n");
-    }
-  }
 }

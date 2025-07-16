@@ -1,5 +1,4 @@
 import { 
-  AssessmentSession, 
   Exercise, 
   ProcessingStatus, 
   AssessmentSummary,
@@ -148,8 +147,7 @@ export class AssessmentProcessor {
         });
         
         const analysis = await this.audioAnalyzer.analyzeExercise(
-          audioBuffer,
-          exercise.metadata
+          audioBuffer
         );
         
         // Save analysis results
