@@ -562,8 +562,6 @@ export class SaxophoneAudioAnalyzer {
     }
   }
 
-  
-
   private calculateMeanVector(vectors: number[][]): number[] {
     if (vectors.length === 0) return [];
     const vectorLength = vectors[0]?.length || 0;
@@ -609,32 +607,59 @@ export class SaxophoneAudioAnalyzer {
     
     for (let i = windowSize; i < correctedTrack.length - windowSize; i++) {
       const current = correctedTrack[i];
+      const currentConfidence = pitchConfidence[i] || 0;
+      
       if (current === undefined || current <= 0) continue;
       
-      // Get surrounding valid pitches
+      // Only consider correction if current confidence is below threshold
+      // High confidence measurements are less likely to be octave errors
+      if (currentConfidence > this.config.pitchTracking.confidenceThreshold) {
+        continue;
+      }
+      
+      // Get surrounding valid pitches and their confidences
       const surrounding = [];
+      const surroundingConfidences = [];
+      
       for (let j = Math.max(0, i - windowSize); j <= Math.min(correctedTrack.length - 1, i + windowSize); j++) {
         const value = correctedTrack[j];
-        if (j !== i && value !== undefined && value > 0) {
+        const confidence = pitchConfidence[j] || 0;
+        
+        if (j !== i && value !== undefined && value > 0 && confidence > 0) {
           surrounding.push(value);
+          surroundingConfidences.push(confidence);
         }
       }
       
       if (surrounding.length < 3) continue;
       
-      const medianSurrounding = this.calculateMedian(surrounding);
+      // Calculate confidence-weighted median of surrounding pitches
+      const weightedMedian = this.calculateConfidenceWeightedMedian(surrounding, surroundingConfidences);
       
       // Check for octave errors (2x or 0.5x frequency)
-      const ratioUp = current / medianSurrounding;
-      const ratioDown = medianSurrounding / current;
+      const ratioUp = current / weightedMedian;
+      const ratioDown = weightedMedian / current;
       const threshold = this.config.pitchTracking.octaveErrorThreshold;
       
-      if (ratioUp > (2.0 - threshold) && ratioUp < (2.0 + threshold)) {
-        // Octave too high
-        correctedTrack[i] = current / 2;
-      } else if (ratioDown > (2.0 - threshold) && ratioDown < (2.0 + threshold)) {
-        // Octave too low
-        correctedTrack[i] = current * 2;
+      // Calculate average confidence of surrounding measurements
+      const avgSurroundingConfidence = surroundingConfidences.reduce((sum, conf) => sum + conf, 0) / surroundingConfidences.length;
+      
+      // Only apply correction if:
+      // 1. The octave ratio is detected
+      // 2. The current measurement has low confidence
+      // 3. The surrounding measurements have higher average confidence
+      const shouldCorrect = avgSurroundingConfidence > currentConfidence + 0.1;
+      
+      if (shouldCorrect) {
+        if (ratioUp > (2.0 - threshold) && ratioUp < (2.0 + threshold)) {
+          // Octave too high - apply correction with confidence weighting
+          const correctionStrength = Math.min(1, avgSurroundingConfidence - currentConfidence);
+          correctedTrack[i] = current / (1 + correctionStrength);
+        } else if (ratioDown > (2.0 - threshold) && ratioDown < (2.0 + threshold)) {
+          // Octave too low - apply correction with confidence weighting
+          const correctionStrength = Math.min(1, avgSurroundingConfidence - currentConfidence);
+          correctedTrack[i] = current * (1 + correctionStrength);
+        }
       }
     }
     
@@ -752,6 +777,36 @@ export class SaxophoneAudioAnalyzer {
     } else {
       return sorted[middle] || 0;
     }
+  }
+
+  private calculateConfidenceWeightedMedian(values: number[], confidences: number[]): number {
+    if (values.length === 0 || values.length !== confidences.length) return 0;
+    
+    // Create weighted pairs and sort by value
+    const weightedPairs = values.map((value, index) => ({
+      value,
+      confidence: confidences[index] || 0
+    })).sort((a, b) => a.value - b.value);
+    
+    // Calculate cumulative confidence weights
+    const totalWeight = weightedPairs.reduce((sum, pair) => sum + pair.confidence, 0);
+    if (totalWeight === 0) return this.calculateMedian(values);
+    
+    const targetWeight = totalWeight / 2;
+    let cumulativeWeight = 0;
+    
+    for (let i = 0; i < weightedPairs.length; i++) {
+      const pair = weightedPairs[i];
+      if (pair) {
+        cumulativeWeight += pair.confidence;
+        if (cumulativeWeight >= targetWeight) {
+          return pair.value;
+        }
+      }
+    }
+    
+    // Fallback to regular median
+    return this.calculateMedian(values);
   }
 
 

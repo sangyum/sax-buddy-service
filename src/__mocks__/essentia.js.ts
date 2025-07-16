@@ -17,7 +17,7 @@ export class Essentia {
   // Mock Essentia methods with realistic return values
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   arrayToVector(_array: Float32Array): unknown {
-    return { delete: () => {} }; // Mock EssentiaVector with delete method
+    return { delete: () => { /* Mock delete method */ } }; // Mock EssentiaVector with delete method
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -116,14 +116,14 @@ export class Essentia {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Windowing(_vector: unknown, _type: string, _size: number, _normalized: boolean, _normalizeGain: number, _zeroPhase: boolean): unknown {
     return {
-      frame: { delete: () => {} }
+      frame: { delete: () => { /* Mock delete method */ } }
     };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Spectrum(_vector: unknown, _size: number): unknown {
     return {
-      spectrum: { delete: () => {} }
+      spectrum: { delete: () => { /* Mock delete method */ } }
     };
   }
 
@@ -131,7 +131,7 @@ export class Essentia {
   FrameGenerator(_audio: Float32Array, _frameSize: number, _hopSize: number): unknown[] {
     const frames: unknown[] = [];
     for (let i = 0; i < 10; i++) {
-      frames.push({ delete: () => {} });
+      frames.push({ delete: () => { /* Mock delete method */ } });
     }
     return frames;
   }

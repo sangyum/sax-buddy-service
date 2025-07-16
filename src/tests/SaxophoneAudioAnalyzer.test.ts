@@ -4,7 +4,7 @@ import { SaxophoneAudioAnalyzer } from "../services/SaxophoneAudioAnalyzer";
 jest.mock("essentia.js");
 
 // Helper function to generate valid audio buffers for testing
-function generateValidAudioBuffer(durationSeconds: number = 1.0, frequency: number = 440.0, amplitude: number = 0.8, sampleRate: number = 44100): Float32Array {
+function generateValidAudioBuffer(durationSeconds = 1.0, frequency = 440.0, amplitude = 0.8, sampleRate = 44100): Float32Array {
   const sampleCount = Math.floor(durationSeconds * sampleRate);
   const buffer = new Float32Array(sampleCount);
   
