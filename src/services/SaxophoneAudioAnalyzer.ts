@@ -809,6 +809,252 @@ export class SaxophoneAudioAnalyzer {
     return this.calculateMedian(values);
   }
 
+  private analyzePitchContextualHarmonics(harmonics: number[], pitchTrack: number[]): {
+    overtoneDistribution: number[];
+  } {
+    if (harmonics.length === 0 || pitchTrack.length === 0) {
+      return { overtoneDistribution: harmonics };
+    }
+    
+    // Filter harmonics based on pitch stability
+    const validPitches = pitchTrack.filter(p => p > 0);
+    if (validPitches.length === 0) {
+      return { overtoneDistribution: harmonics };
+    }
+    
+    // Calculate pitch stability factor
+    const pitchStability = this.calculatePitchStability(validPitches);
+    
+    // Adjust harmonic distribution based on pitch stability
+    // More stable pitches tend to have cleaner harmonic structure
+    const adjustedHarmonics = harmonics.map(harmonic => {
+      if (pitchStability > 0.8) {
+        // Stable pitch - enhance harmonic clarity
+        return harmonic * 1.1;
+      } else if (pitchStability < 0.5) {
+        // Unstable pitch - reduce harmonic emphasis
+        return harmonic * 0.9;
+      }
+      return harmonic;
+    });
+    
+    return { overtoneDistribution: adjustedHarmonics };
+  }
+
+  private calculatePitchAwareHarmonicRichness(harmonics: number[], pitchTrack: number[]): number {
+    if (harmonics.length === 0) return 0.5;
+    
+    // Basic harmonic richness calculation
+    const basicRichness = harmonics.reduce((sum, harmonic) => sum + harmonic, 0) / harmonics.length;
+    
+    // Adjust based on pitch characteristics
+    const validPitches = pitchTrack.filter(p => p > 0);
+    if (validPitches.length === 0) return basicRichness;
+    
+    // Calculate pitch-based adjustments
+    const avgPitch = validPitches.reduce((sum, p) => sum + p, 0) / validPitches.length;
+    const pitchStability = this.calculatePitchStability(validPitches);
+    
+    // Saxophone-specific harmonic behavior
+    let pitchAdjustment = 1.0;
+    
+    // Higher pitches typically have different harmonic structures
+    if (avgPitch > 800) {
+      // Altissimo range - harmonics may be less prominent
+      pitchAdjustment *= 0.85;
+    } else if (avgPitch < 200) {
+      // Low range - rich harmonics
+      pitchAdjustment *= 1.15;
+    }
+    
+    // Stable pitches allow for richer harmonic development
+    pitchAdjustment *= (0.7 + 0.3 * pitchStability);
+    
+    return Math.max(0, Math.min(1, basicRichness * pitchAdjustment));
+  }
+
+  private calculateContextualFundamentalRatio(harmonics: number[], pitchTrack: number[]): number {
+    if (harmonics.length === 0) return 1;
+    
+    const fundamentalStrength = harmonics[0] || 1;
+    const harmonicSum = harmonics.slice(1).reduce((sum, h) => sum + h, 0);
+    const basicRatio = harmonicSum > 0 ? fundamentalStrength / harmonicSum : 1;
+    
+    // Adjust ratio based on pitch context
+    const validPitches = pitchTrack.filter(p => p > 0);
+    if (validPitches.length === 0) return basicRatio;
+    
+    const avgPitch = validPitches.reduce((sum, p) => sum + p, 0) / validPitches.length;
+    const pitchStability = this.calculatePitchStability(validPitches);
+    
+    // Saxophone-specific fundamental-to-harmonic relationships
+    let contextualAdjustment = 1.0;
+    
+    // In different pitch ranges, the fundamental-to-harmonic ratio changes
+    if (avgPitch > 600) {
+      // High range - fundamental may be stronger relative to harmonics
+      contextualAdjustment *= 1.2;
+    } else if (avgPitch < 300) {
+      // Low range - harmonics may be more prominent
+      contextualAdjustment *= 0.8;
+    }
+    
+    // Stable pitches tend to have more consistent fundamental strength
+    if (pitchStability > 0.8) {
+      contextualAdjustment *= 1.1;
+    } else if (pitchStability < 0.5) {
+      contextualAdjustment *= 0.9;
+    }
+    
+    return Math.max(0.1, basicRatio * contextualAdjustment);
+  }
+
+  private calculatePitchStability(pitches: number[]): number {
+    if (pitches.length < 2) return 0.5;
+    
+    const avgPitch = pitches.reduce((sum, p) => sum + p, 0) / pitches.length;
+    const variance = pitches.reduce((sum, p) => sum + Math.pow(p - avgPitch, 2), 0) / pitches.length;
+    const stdDev = Math.sqrt(variance);
+    
+    // Convert standard deviation to stability score (0-1)
+    // Lower standard deviation = higher stability
+    const stability = Math.max(0, 1 - (stdDev / (avgPitch * 0.1))); // 10% variation = 0 stability
+    
+    return Math.min(1, stability);
+  }
+
+  private analyzeEnergyBasedDynamics(energy: number[]): {
+    dynamicRange: number;
+    volumeRange: [number, number];
+    accentClarity: number;
+  } {
+    if (energy.length === 0) {
+      return {
+        dynamicRange: 0,
+        volumeRange: [-60, -20],
+        accentClarity: 0.5
+      };
+    }
+    
+    // Convert energy to dB scale
+    const energyDB = energy.map(e => 20 * Math.log10(Math.max(e, 1e-10)));
+    const minDB = Math.min(...energyDB);
+    const maxDB = Math.max(...energyDB);
+    const volumeRange: [number, number] = [minDB, maxDB];
+    const dynamicRange = maxDB - minDB;
+    
+    // Detect accents using energy-based analysis
+    const accentClarity = this.detectAccents(energyDB);
+    
+    return {
+      dynamicRange,
+      volumeRange,
+      accentClarity
+    };
+  }
+
+  private analyzeLoudnessBasedDynamics(loudness: number[]): {
+    dynamicRange: number;
+    volumeRange: [number, number];
+    accentClarity: number;
+  } {
+    if (loudness.length === 0) {
+      return {
+        dynamicRange: 0,
+        volumeRange: [-60, -20],
+        accentClarity: 0.5
+      };
+    }
+    
+    // Convert loudness to dB scale (assuming loudness is already in perceptual units)
+    const loudnessDB = loudness.map(l => 20 * Math.log10(Math.max(l, 1e-10)));
+    const minDB = Math.min(...loudnessDB);
+    const maxDB = Math.max(...loudnessDB);
+    const volumeRange: [number, number] = [minDB, maxDB];
+    const dynamicRange = maxDB - minDB;
+    
+    // Detect accents using loudness-based analysis (more perceptually accurate)
+    const accentClarity = this.detectLoudnessAccents(loudnessDB);
+    
+    return {
+      dynamicRange,
+      volumeRange,
+      accentClarity
+    };
+  }
+
+  private combineDynamicAnalyses(energy: number[], loudness: number[]): {
+    crescendoDecrescendoControl: number;
+  } {
+    if (energy.length === 0 || loudness.length === 0) {
+      return {
+        crescendoDecrescendoControl: 0.5
+      };
+    }
+    
+    // Analyze crescendo/decrescendo control using both energy and loudness
+    const energyDB = energy.map(e => 20 * Math.log10(Math.max(e, 1e-10)));
+    const loudnessDB = loudness.map(l => 20 * Math.log10(Math.max(l, 1e-10)));
+    
+    const smoothedEnergy = this.smoothArray(energyDB, 5);
+    const smoothedLoudness = this.smoothArray(loudnessDB, 5);
+    
+    // Detect dynamic control using both measures
+    const energyControl = this.detectDynamicControl(smoothedEnergy);
+    const loudnessControl = this.detectDynamicControl(smoothedLoudness);
+    
+    // Combine measures with slight preference for loudness (more perceptual)
+    const crescendoDecrescendoControl = (energyControl * 0.4) + (loudnessControl * 0.6);
+    
+    return {
+      crescendoDecrescendoControl
+    };
+  }
+
+  private calculateCombinedDynamicEffectiveness(energyRange: number, loudnessRange: number): number {
+    // Combine energy and loudness dynamic ranges
+    // Energy provides technical accuracy, loudness provides perceptual accuracy
+    const energyEffectiveness = Math.min(1, energyRange / 40); // 40dB = excellent range
+    const loudnessEffectiveness = Math.min(1, loudnessRange / 35); // 35dB = excellent perceived range
+    
+    // Weight loudness slightly higher for perceptual accuracy
+    const combinedEffectiveness = (energyEffectiveness * 0.45) + (loudnessEffectiveness * 0.55);
+    
+    return Math.max(0, Math.min(1, combinedEffectiveness));
+  }
+
+  private detectLoudnessAccents(loudnessDB: number[]): number {
+    if (loudnessDB.length < 5) return 0.5;
+    
+    let accents = 0;
+    let clearAccents = 0;
+    
+    for (let i = 2; i < loudnessDB.length - 2; i++) {
+      const current = loudnessDB[i];
+      const surrounding = [
+        loudnessDB[i - 2], loudnessDB[i - 1],
+        loudnessDB[i + 1], loudnessDB[i + 2]
+      ].filter((val): val is number => val !== undefined);
+      
+      if (surrounding.length === 4 && current !== undefined) {
+        const avgSurrounding = surrounding.reduce((sum, val) => sum + val, 0) / surrounding.length;
+        
+        // Check if current value is significantly higher (accent)
+        // Use smaller threshold for loudness as it's more perceptually relevant
+        if (current > avgSurrounding + 4) { // 4dB accent threshold for loudness
+          accents++;
+          
+          // Check if it's a clear, isolated accent
+          if (current > Math.max(...surrounding) + 2) { // 2dB for clear accent
+            clearAccents++;
+          }
+        }
+      }
+    }
+    
+    return accents > 0 ? clearAccents / accents : 0.5;
+  }
+
 
   private async analyzePitchIntonation(
     analysisResult: EssentiaAnalysisResult
@@ -1480,7 +1726,6 @@ export class SaxophoneAudioAnalyzer {
   private analyzeHarmonicContent(
     harmonics: number[],
     spectralCentroid: number[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     pitchTrack: number[]
   ): {
     overtoneDistribution: number[];
@@ -1488,18 +1733,17 @@ export class SaxophoneAudioAnalyzer {
     fundamentalToHarmonicRatio: number;
     spectralCentroid: number[];
   } {
-    // Calculate harmonic richness as the sum of harmonic strengths
-    const harmonicRichness = harmonics.length > 0
-      ? harmonics.reduce((sum, harmonic) => sum + harmonic, 0) / harmonics.length
-      : 0.5;
+    // Analyze harmonics in context of fundamental frequency
+    const pitchBasedAnalysis = this.analyzePitchContextualHarmonics(harmonics, pitchTrack);
     
-    // Calculate fundamental to harmonic ratio
-    const fundamentalStrength = harmonics[0] || 1;
-    const harmonicSum = harmonics.slice(1).reduce((sum, h) => sum + h, 0);
-    const fundamentalToHarmonicRatio = harmonicSum > 0 ? fundamentalStrength / harmonicSum : 1;
+    // Calculate harmonic richness considering pitch stability
+    const harmonicRichness = this.calculatePitchAwareHarmonicRichness(harmonics, pitchTrack);
+    
+    // Calculate fundamental to harmonic ratio with pitch context
+    const fundamentalToHarmonicRatio = this.calculateContextualFundamentalRatio(harmonics, pitchTrack);
     
     return {
-      overtoneDistribution: harmonics,
+      overtoneDistribution: pitchBasedAnalysis.overtoneDistribution,
       harmonicRichness,
       fundamentalToHarmonicRatio,
       spectralCentroid
@@ -1508,7 +1752,6 @@ export class SaxophoneAudioAnalyzer {
 
   private analyzeDynamicRange(
     energy: number[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     loudness: number[]
   ): {
     volumeRange: [number, number];
@@ -1525,22 +1768,25 @@ export class SaxophoneAudioAnalyzer {
       };
     }
     
-    // Convert energy to dB scale
-    const energyDB = energy.map(e => 20 * Math.log10(Math.max(e, 1e-10)));
-    const minDB = Math.min(...energyDB);
-    const maxDB = Math.max(...energyDB);
-    const volumeRange: [number, number] = [minDB, maxDB];
+    // Analyze both energy and loudness for comprehensive dynamic assessment
+    const energyBasedAnalysis = this.analyzeEnergyBasedDynamics(energy);
+    const loudnessBasedAnalysis = this.analyzeLoudnessBasedDynamics(loudness);
+    const combinedAnalysis = this.combineDynamicAnalyses(energy, loudness);
     
-    // Calculate dynamic variation effectiveness
-    const dynamicRange = maxDB - minDB;
-    const dynamicVariationEffectiveness = Math.min(1, dynamicRange / 40); // 40dB = excellent range
+    // Use loudness for more perceptually accurate volume range
+    const volumeRange = loudnessBasedAnalysis.volumeRange;
     
-    // Detect crescendos/decrescendos (smoothed energy trends)
-    const smoothedEnergy = this.smoothArray(energyDB, 5);
-    const crescendoDecrescendoControl = this.detectDynamicControl(smoothedEnergy);
+    // Combine energy and loudness for dynamic variation effectiveness
+    const dynamicVariationEffectiveness = this.calculateCombinedDynamicEffectiveness(
+      energyBasedAnalysis.dynamicRange,
+      loudnessBasedAnalysis.dynamicRange
+    );
     
-    // Detect accents (sudden energy increases)
-    const accentClarity = this.detectAccents(energyDB);
+    // Use combined analysis for crescendo/decrescendo control
+    const crescendoDecrescendoControl = combinedAnalysis.crescendoDecrescendoControl;
+    
+    // Use loudness for more accurate accent detection
+    const accentClarity = loudnessBasedAnalysis.accentClarity;
     
     return {
       volumeRange,
@@ -2895,21 +3141,187 @@ export class SaxophoneAudioAnalyzer {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private detectStaccatoArticulation(onsets: number[], loudness: number[]): number {
-    // Staccato characterized by short, detached notes
+    if (onsets.length < 2 || loudness.length === 0) {
+      return 0.5;
+    }
+    
+    // Convert loudness to dB for analysis
+    const loudnessDB = loudness.map(l => 20 * Math.log10(Math.max(l, 1e-10)));
+    
     let staccatoScore = 0;
+    let validNotes = 0;
+    
     for (let i = 0; i < onsets.length - 1; i++) {
       const currentOnset = onsets[i];
       const nextOnset = onsets[i + 1];
+      
       if (currentOnset !== undefined && nextOnset !== undefined) {
         const noteDuration = nextOnset - currentOnset;
-        if (noteDuration < 0.3) { // Short notes indicate staccato
-          staccatoScore += 1;
+        
+        // Calculate loudness characteristics for staccato detection
+        const loudnessCharacteristics = this.analyzeLoudnessForStaccato(
+          currentOnset, 
+          nextOnset, 
+          loudnessDB
+        );
+        
+        // Staccato scoring based on multiple characteristics
+        let noteStaccatoScore = 0;
+        
+        // 1. Duration-based scoring (shorter = more staccato)
+        if (noteDuration < 0.2) {
+          noteStaccatoScore += 0.4; // Very short notes
+        } else if (noteDuration < 0.4) {
+          noteStaccatoScore += 0.3; // Short notes
+        } else if (noteDuration < 0.6) {
+          noteStaccatoScore += 0.1; // Medium-short notes
         }
+        
+        // 2. Loudness envelope characteristics
+        noteStaccatoScore += loudnessCharacteristics.attackDecayRatio * 0.3;
+        noteStaccatoScore += loudnessCharacteristics.rapidDecayScore * 0.2;
+        noteStaccatoScore += loudnessCharacteristics.separationClarity * 0.1;
+        
+        staccatoScore += Math.min(1, noteStaccatoScore);
+        validNotes++;
       }
     }
-    return onsets.length > 1 ? staccatoScore / (onsets.length - 1) : 0.5;
+    
+    return validNotes > 0 ? staccatoScore / validNotes : 0.5;
+  }
+
+  private analyzeLoudnessForStaccato(
+    startTime: number, 
+    endTime: number, 
+    loudnessDB: number[]
+  ): {
+    attackDecayRatio: number;
+    rapidDecayScore: number;
+    separationClarity: number;
+  } {
+    // Estimate frame indices from time (assuming ~100 frames per second)
+    const frameRate = loudnessDB.length / (loudnessDB.length * 0.01); // Approximate frame rate
+    const startFrame = Math.floor(startTime * frameRate);
+    const endFrame = Math.floor(endTime * frameRate);
+    
+    // Extract loudness segment for this note
+    const noteSegment = loudnessDB.slice(
+      Math.max(0, startFrame), 
+      Math.min(loudnessDB.length, endFrame)
+    );
+    
+    if (noteSegment.length < 3) {
+      return {
+        attackDecayRatio: 0.5,
+        rapidDecayScore: 0.5,
+        separationClarity: 0.5
+      };
+    }
+    
+    // 1. Analyze attack/decay ratio - staccato has sharp attack and rapid decay
+    const attackDecayRatio = this.calculateAttackDecayRatio(noteSegment);
+    
+    // 2. Analyze rapid decay characteristic - staccato should decay quickly
+    const rapidDecayScore = this.calculateRapidDecayScore(noteSegment);
+    
+    // 3. Analyze separation clarity - staccato notes should have clear gaps
+    const separationClarity = this.calculateSeparationClarity(
+      startFrame, 
+      endFrame, 
+      loudnessDB
+    );
+    
+    return {
+      attackDecayRatio,
+      rapidDecayScore,
+      separationClarity
+    };
+  }
+  
+  private calculateAttackDecayRatio(noteSegment: number[]): number {
+    if (noteSegment.length < 4) return 0.5;
+    
+    // Find peak and analyze attack/decay phases
+    const maxLoudness = Math.max(...noteSegment);
+    const peakIndex = noteSegment.indexOf(maxLoudness);
+    
+    // Calculate attack slope (beginning to peak)
+    const attackPhase = noteSegment.slice(0, peakIndex + 1);
+    const attackSlope = attackPhase.length > 1 && attackPhase[0] !== undefined ? 
+      (maxLoudness - attackPhase[0]) / attackPhase.length : 0;
+    
+    // Calculate decay slope (peak to end)
+    const decayPhase = noteSegment.slice(peakIndex);
+    const lastDecayValue = decayPhase[decayPhase.length - 1];
+    const decaySlope = decayPhase.length > 1 && lastDecayValue !== undefined ? 
+      Math.abs(lastDecayValue - maxLoudness) / decayPhase.length : 0;
+    
+    // Staccato should have relatively fast attack and even faster decay
+    const attackDecayRatio = attackSlope > 0 ? decaySlope / attackSlope : 0;
+    
+    // Normalize to 0-1 range (higher values indicate more staccato-like)
+    return Math.min(1, attackDecayRatio / 2);
+  }
+  
+  private calculateRapidDecayScore(noteSegment: number[]): number {
+    if (noteSegment.length < 3) return 0.5;
+    
+    const maxLoudness = Math.max(...noteSegment);
+    const peakIndex = noteSegment.indexOf(maxLoudness);
+    
+    // Focus on the decay portion after peak
+    const decayPhase = noteSegment.slice(peakIndex);
+    
+    if (decayPhase.length < 2) return 0.5;
+    
+    // Calculate how quickly the loudness drops after peak
+    const decayRate = decayPhase.map((loudness, i) => {
+      if (i === 0) return 0;
+      const prevLoudness = decayPhase[i - 1];
+      return prevLoudness !== undefined ? prevLoudness - loudness : 0; // Positive values indicate decay
+    });
+    
+    const avgDecayRate = decayRate.reduce((sum, rate) => sum + rate, 0) / decayRate.length;
+    
+    // Higher decay rate indicates more staccato-like behavior
+    // Normalize to 0-1 range (3dB per frame is considered rapid decay)
+    return Math.min(1, Math.max(0, avgDecayRate / 3));
+  }
+  
+  private calculateSeparationClarity(
+    startFrame: number, 
+    endFrame: number, 
+    loudnessDB: number[]
+  ): number {
+    // Analyze loudness before and after the note to detect clear separation
+    const beforeSegmentStart = Math.max(0, startFrame - 5);
+    const beforeSegment = loudnessDB.slice(beforeSegmentStart, startFrame);
+    
+    const afterSegmentEnd = Math.min(loudnessDB.length, endFrame + 5);
+    const afterSegment = loudnessDB.slice(endFrame, afterSegmentEnd);
+    
+    if (beforeSegment.length === 0 || afterSegment.length === 0) {
+      return 0.5;
+    }
+    
+    // Calculate average loudness before and after the note
+    const beforeAvg = beforeSegment.reduce((sum, val) => sum + val, 0) / beforeSegment.length;
+    const afterAvg = afterSegment.reduce((sum, val) => sum + val, 0) / afterSegment.length;
+    
+    // Calculate loudness during the note
+    const noteSegment = loudnessDB.slice(startFrame, endFrame);
+    const noteAvg = noteSegment.reduce((sum, val) => sum + val, 0) / noteSegment.length;
+    
+    // Staccato should have clear separation (lower loudness before/after)
+    const separationBefore = Math.max(0, noteAvg - beforeAvg);
+    const separationAfter = Math.max(0, noteAvg - afterAvg);
+    
+    // Average separation in dB - normalize to 0-1 range
+    const avgSeparation = (separationBefore + separationAfter) / 2;
+    
+    // 6dB separation is considered good staccato separation
+    return Math.min(1, Math.max(0, avgSeparation / 6));
   }
 
   private detectLegatoArticulation(onsets: number[], loudness: number[]): number {
@@ -2955,34 +3367,238 @@ export class SaxophoneAudioAnalyzer {
     return onsets.length > 1 ? tenutoScore / (onsets.length - 1) : 0.5;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private analyzeClarityByTempo(onsets: number[], tempo: number): ClarityByTempoAnalysis {
-    // Analyze articulation clarity at different tempos
-    const firstOnset = onsets[0];
-    const lastOnset = onsets[onsets.length - 1];
-    const avgInterval = onsets.length > 1 && firstOnset !== undefined && lastOnset !== undefined ? 
-      (lastOnset - firstOnset) / (onsets.length - 1) : 1;
-    
-    const estimatedTempo = 60 / avgInterval;
-    
-    // Score clarity based on tempo - generally harder to articulate clearly at faster tempos
-    let slow = 0.9, moderate = 0.8, fast = 0.7;
-    
-    if (estimatedTempo < 80) {
-      slow = 0.95;
-      moderate = 0.85;
-      fast = 0.75;
-    } else if (estimatedTempo > 140) {
-      slow = 0.85;
-      moderate = 0.75;
-      fast = 0.65;
+    if (onsets.length < 2) {
+      return {
+        slow: 0.5,
+        medium: 0.5,
+        fast: 0.5,
+        overall: 0.5
+      };
     }
     
-    return { 
-      slow, 
-      medium: moderate, 
-      fast,
-      overall: (slow + moderate + fast) / 3
+    // Use the provided tempo parameter for more accurate analysis
+    const actualTempo = tempo > 0 ? tempo : this.estimateTempoFromOnsets(onsets);
+    
+    // Analyze onset consistency and precision for tempo-based clarity scoring
+    const onsetConsistency = this.calculateOnsetConsistency(onsets);
+    const articulationPrecision = this.calculateArticulationPrecision(onsets, actualTempo);
+    
+    // Calculate clarity scores based on tempo ranges and performance characteristics
+    const clarityScores = this.calculateTempoBasedClarityScores(
+      actualTempo, 
+      onsetConsistency, 
+      articulationPrecision
+    );
+    
+    // Analyze tempo-specific challenges for saxophone articulation
+    const tempoSpecificFactors = this.analyzeTempoSpecificFactors(actualTempo, onsets);
+    
+    // Apply tempo-specific adjustments to clarity scores
+    const adjustedScores = this.applyTempoSpecificAdjustments(
+      clarityScores, 
+      tempoSpecificFactors
+    );
+    
+    return {
+      slow: adjustedScores.slow,
+      medium: adjustedScores.medium,
+      fast: adjustedScores.fast,
+      overall: (adjustedScores.slow + adjustedScores.medium + adjustedScores.fast) / 3
+    };
+  }
+
+  private estimateTempoFromOnsets(onsets: number[]): number {
+    if (onsets.length < 2) return 120; // Default tempo
+    
+    const firstOnset = onsets[0];
+    const lastOnset = onsets[onsets.length - 1];
+    
+    if (firstOnset === undefined || lastOnset === undefined) return 120;
+    
+    const avgInterval = (lastOnset - firstOnset) / (onsets.length - 1);
+    return 60 / avgInterval;
+  }
+  
+  private calculateOnsetConsistency(onsets: number[]): number {
+    if (onsets.length < 3) return 0.5;
+    
+    // Calculate intervals between consecutive onsets
+    const intervals: number[] = [];
+    for (let i = 1; i < onsets.length; i++) {
+      const current = onsets[i];
+      const previous = onsets[i - 1];
+      if (current !== undefined && previous !== undefined) {
+        intervals.push(current - previous);
+      }
+    }
+    
+    if (intervals.length === 0) return 0.5;
+    
+    // Calculate coefficient of variation (std dev / mean) for consistency
+    const mean = intervals.reduce((sum, val) => sum + val, 0) / intervals.length;
+    const variance = intervals.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / intervals.length;
+    const stdDev = Math.sqrt(variance);
+    
+    const coefficientOfVariation = mean > 0 ? stdDev / mean : 1;
+    
+    // Convert to consistency score (lower variation = higher consistency)
+    return Math.max(0, Math.min(1, 1 - coefficientOfVariation));
+  }
+  
+  private calculateArticulationPrecision(onsets: number[], tempo: number): number {
+    if (onsets.length < 2) return 0.5;
+    
+    // Calculate expected beat interval from tempo
+    const expectedInterval = 60 / tempo;
+    
+    // Analyze how closely onsets align with expected beat grid
+    let precisionScore = 0;
+    let validOnsets = 0;
+    
+    for (let i = 1; i < onsets.length; i++) {
+      const current = onsets[i];
+      const previous = onsets[i - 1];
+      
+      if (current !== undefined && previous !== undefined) {
+        const actualInterval = current - previous;
+        
+        // Find the closest multiple of expected interval
+        const beatMultiple = Math.round(actualInterval / expectedInterval);
+        const expectedTime = beatMultiple * expectedInterval;
+        
+        // Calculate timing precision (closer to expected = higher precision)
+        const timingError = Math.abs(actualInterval - expectedTime);
+        const precision = Math.max(0, 1 - (timingError / (expectedInterval * 0.5)));
+        
+        precisionScore += precision;
+        validOnsets++;
+      }
+    }
+    
+    return validOnsets > 0 ? precisionScore / validOnsets : 0.5;
+  }
+  
+  private calculateTempoBasedClarityScores(
+    tempo: number, 
+    onsetConsistency: number, 
+    articulationPrecision: number
+  ): { slow: number; medium: number; fast: number } {
+    // Define tempo ranges for saxophone articulation
+    const tempoRanges = {
+      slow: { min: 0, max: 100 },
+      medium: { min: 100, max: 150 },
+      fast: { min: 150, max: 300 }
+    };
+    
+    // Base clarity scores - slower tempos generally allow better clarity
+    const baseScores = {
+      slow: 0.85,
+      medium: 0.75,
+      fast: 0.65
+    };
+    
+    // Adjust scores based on actual performance characteristics
+    const consistencyWeight = 0.4;
+    const precisionWeight = 0.6;
+    
+    // Calculate weighted performance score
+    const performanceScore = (onsetConsistency * consistencyWeight) + 
+                           (articulationPrecision * precisionWeight);
+    
+    // Apply tempo-specific adjustments
+    const adjustedScores = {
+      slow: baseScores.slow,
+      medium: baseScores.medium,
+      fast: baseScores.fast
+    };
+    
+    // Determine which tempo range the actual tempo falls into
+    const actualRange = tempo <= tempoRanges.slow.max ? "slow" :
+      tempo <= tempoRanges.medium.max ? "medium" : "fast";
+    
+    // Apply performance-based adjustments more heavily to the current tempo range
+    Object.keys(adjustedScores).forEach(range => {
+      const isCurrentRange = range === actualRange;
+      const adjustmentFactor = isCurrentRange ? 0.8 : 0.3;
+      
+      adjustedScores[range as keyof typeof adjustedScores] = 
+        baseScores[range as keyof typeof baseScores] * (1 - adjustmentFactor) +
+        performanceScore * adjustmentFactor;
+    });
+    
+    return adjustedScores;
+  }
+  
+  private analyzeTempoSpecificFactors(tempo: number, onsets: number[]): {
+    difficultyMultiplier: number;
+    enduranceEffect: number;
+    articulationChallenge: number;
+  } {
+    // Analyze saxophone-specific challenges at different tempos
+    let difficultyMultiplier = 1.0;
+    let enduranceEffect = 1.0;
+    let articulationChallenge = 1.0;
+    
+    if (tempo < 80) {
+      // Very slow tempo challenges: maintaining steady air support, avoiding dragging
+      difficultyMultiplier = 0.95;
+      enduranceEffect = 0.98;
+      articulationChallenge = 0.92;
+    } else if (tempo < 120) {
+      // Moderate-slow tempo: good balance, generally easier
+      difficultyMultiplier = 1.05;
+      enduranceEffect = 1.02;
+      articulationChallenge = 1.0;
+    } else if (tempo < 160) {
+      // Moderate-fast tempo: requires good technique but manageable
+      difficultyMultiplier = 1.0;
+      enduranceEffect = 0.98;
+      articulationChallenge = 0.95;
+    } else if (tempo < 200) {
+      // Fast tempo: technical challenges increase
+      difficultyMultiplier = 0.9;
+      enduranceEffect = 0.92;
+      articulationChallenge = 0.85;
+    } else {
+      // Very fast tempo: significant challenges for clarity
+      difficultyMultiplier = 0.8;
+      enduranceEffect = 0.85;
+      articulationChallenge = 0.75;
+    }
+    
+    // Analyze performance duration effect on endurance
+    const performanceDuration = onsets.length > 1 ? 
+      (onsets[onsets.length - 1] ?? 0) - (onsets[0] ?? 0) : 0;
+    
+    if (performanceDuration > 60) { // More than 1 minute
+      enduranceEffect *= 0.95;
+    }
+    if (performanceDuration > 180) { // More than 3 minutes
+      enduranceEffect *= 0.9;
+    }
+    
+    return {
+      difficultyMultiplier,
+      enduranceEffect,
+      articulationChallenge
+    };
+  }
+  
+  private applyTempoSpecificAdjustments(
+    clarityScores: { slow: number; medium: number; fast: number },
+    factors: { difficultyMultiplier: number; enduranceEffect: number; articulationChallenge: number }
+  ): { slow: number; medium: number; fast: number } {
+    return {
+      slow: Math.max(0, Math.min(1, 
+        clarityScores.slow * factors.difficultyMultiplier * factors.enduranceEffect
+      )),
+      medium: Math.max(0, Math.min(1, 
+        clarityScores.medium * factors.difficultyMultiplier * factors.enduranceEffect * factors.articulationChallenge
+      )),
+      fast: Math.max(0, Math.min(1, 
+        clarityScores.fast * factors.difficultyMultiplier * factors.enduranceEffect * factors.articulationChallenge * 0.9
+      ))
     };
   }
 
@@ -3013,15 +3629,243 @@ export class SaxophoneAudioAnalyzer {
     return transitions > 0 ? smoothnessScore / transitions : 0.8;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private calculatePassageCleanness(spectralFlux: number[], onsets: number[]): number {
+    if (spectralFlux.length === 0 || onsets.length === 0) return 0.5;
+    
+    // Analyze spectral cleanness (traditional approach)
+    const spectralCleanness = this.analyzeSpectralCleanness(spectralFlux);
+    
+    // Analyze onset-based cleanness characteristics
+    const onsetCleanness = this.analyzeOnsetBasedCleanness(onsets, spectralFlux);
+    
+    // Analyze passage flow and continuity using onsets
+    const passageFlow = this.analyzePassageFlow(onsets);
+    
+    // Analyze timing precision for passage cleanness
+    const timingPrecision = this.analyzeTimingPrecision(onsets);
+    
+    // Combine multiple cleanness factors with appropriate weights
+    const combinedCleanness = this.combineCleannessFactor(
+      spectralCleanness,
+      onsetCleanness,
+      passageFlow,
+      timingPrecision
+    );
+    
+    return Math.max(0, Math.min(1, combinedCleanness));
+  }
+
+  private analyzeSpectralCleanness(spectralFlux: number[]): number {
     if (spectralFlux.length === 0) return 0.5;
     
     // Clean passages have low spectral flux (less spectral noise)
     const avgFlux = spectralFlux.reduce((sum, flux) => sum + flux, 0) / spectralFlux.length;
     
-    // Lower average flux indicates cleaner playing
-    return Math.max(0, 1 - (avgFlux / 0.5)); // Normalize to 0-1 range
+    // Analyze spectral flux variance - cleaner passages have more stable spectral content
+    const fluxVariance = this.calculateVariance(spectralFlux);
+    const fluxStability = Math.max(0, 1 - (fluxVariance / 0.1)); // Normalize variance
+    
+    // Combine average flux and stability for spectral cleanness
+    const avgFluxScore = Math.max(0, 1 - (avgFlux / 0.5));
+    const spectralCleanness = (avgFluxScore * 0.6) + (fluxStability * 0.4);
+    
+    return spectralCleanness;
+  }
+  
+  private analyzeOnsetBasedCleanness(onsets: number[], spectralFlux: number[]): number {
+    if (onsets.length < 2) return 0.5;
+    
+    // Analyze spectral flux around onset points for clean attacks
+    let onsetCleanness = 0;
+    let validOnsets = 0;
+    
+    for (let i = 0; i < onsets.length; i++) {
+      const onsetTime = onsets[i];
+      if (onsetTime === undefined) continue;
+      
+      // Convert onset time to spectral flux frame index (assuming ~100 fps)
+      const frameIndex = Math.floor(onsetTime * 100);
+      
+      // Analyze spectral flux in the vicinity of each onset
+      const onsetFluxAnalysis = this.analyzeOnsetSpectralFlux(spectralFlux, frameIndex);
+      onsetCleanness += onsetFluxAnalysis;
+      validOnsets++;
+    }
+    
+    return validOnsets > 0 ? onsetCleanness / validOnsets : 0.5;
+  }
+  
+  private analyzeOnsetSpectralFlux(spectralFlux: number[], centerFrame: number): number {
+    // Analyze spectral flux around the onset for clean attack characteristics
+    const windowSize = 3; // Small window around onset
+    const startFrame = Math.max(0, centerFrame - windowSize);
+    const endFrame = Math.min(spectralFlux.length, centerFrame + windowSize + 1);
+    
+    const onsetWindow = spectralFlux.slice(startFrame, endFrame);
+    
+    if (onsetWindow.length === 0) return 0.5;
+    
+    // Clean onsets should have controlled spectral flux
+    const avgFluxInWindow = onsetWindow.reduce((sum, flux) => sum + flux, 0) / onsetWindow.length;
+    const fluxCleanness = Math.max(0, 1 - (avgFluxInWindow / 0.4));
+    
+    return fluxCleanness;
+  }
+  
+  private analyzePassageFlow(onsets: number[]): number {
+    if (onsets.length < 3) return 0.5;
+    
+    // Analyze the flow and continuity of the passage based on onset patterns
+    const intervals = this.calculateOnsetIntervals(onsets);
+    
+    if (intervals.length === 0) return 0.5;
+    
+    // Analyze interval consistency for smooth passage flow
+    const intervalConsistency = this.calculateIntervalConsistency(intervals);
+    
+    // Analyze passage momentum - good flow has appropriate pacing
+    const passageMomentum = this.analyzePasageMomentum(intervals);
+    
+    // Analyze for hesitations or rushes that indicate poor cleanness
+    const hesitationScore = this.analyzeHesitationAndRushes(intervals);
+    
+    // Combine flow factors
+    const passageFlow = (intervalConsistency * 0.4) + 
+                       (passageMomentum * 0.3) + 
+                       (hesitationScore * 0.3);
+    
+    return Math.max(0, Math.min(1, passageFlow));
+  }
+  
+  private calculateOnsetIntervals(onsets: number[]): number[] {
+    const intervals: number[] = [];
+    for (let i = 1; i < onsets.length; i++) {
+      const current = onsets[i];
+      const previous = onsets[i - 1];
+      if (current !== undefined && previous !== undefined) {
+        intervals.push(current - previous);
+      }
+    }
+    return intervals;
+  }
+  
+  private calculateIntervalConsistency(intervals: number[]): number {
+    if (intervals.length < 2) return 0.5;
+    
+    // Calculate coefficient of variation for interval consistency
+    const mean = intervals.reduce((sum, val) => sum + val, 0) / intervals.length;
+    const variance = intervals.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / intervals.length;
+    const stdDev = Math.sqrt(variance);
+    
+    const coefficientOfVariation = mean > 0 ? stdDev / mean : 1;
+    
+    // Clean passages have consistent intervals
+    return Math.max(0, 1 - coefficientOfVariation);
+  }
+  
+  private analyzePasageMomentum(intervals: number[]): number {
+    if (intervals.length < 3) return 0.5;
+    
+    // Analyze gradual changes in interval length for natural momentum
+    let momentumScore = 0;
+    let validTransitions = 0;
+    
+    for (let i = 2; i < intervals.length; i++) {
+      const current = intervals[i];
+      const previous = intervals[i - 1];
+      const prevPrev = intervals[i - 2];
+      
+      if (current !== undefined && previous !== undefined && prevPrev !== undefined) {
+        // Calculate momentum (gradual vs. sudden changes)
+        const change1 = Math.abs(previous - prevPrev);
+        const change2 = Math.abs(current - previous);
+        
+        // Good momentum has gradual changes
+        const momentumFactor = Math.max(0, 1 - Math.abs(change2 - change1) / 0.2);
+        momentumScore += momentumFactor;
+        validTransitions++;
+      }
+    }
+    
+    return validTransitions > 0 ? momentumScore / validTransitions : 0.5;
+  }
+  
+  private analyzeHesitationAndRushes(intervals: number[]): number {
+    if (intervals.length < 2) return 0.5;
+    
+    // Analyze for hesitations (unusually long intervals) and rushes (unusually short intervals)
+    const meanInterval = intervals.reduce((sum, val) => sum + val, 0) / intervals.length;
+    const stdDev = Math.sqrt(intervals.reduce((sum, val) => sum + Math.pow(val - meanInterval, 2), 0) / intervals.length);
+    
+    let hesitationPenalty = 0;
+    let rushPenalty = 0;
+    
+    for (const interval of intervals) {
+      if (interval > meanInterval + 2 * stdDev) {
+        hesitationPenalty += 0.1; // Penalty for hesitation
+      } else if (interval < meanInterval - 2 * stdDev) {
+        rushPenalty += 0.1; // Penalty for rushing
+      }
+    }
+    
+    const totalPenalty = hesitationPenalty + rushPenalty;
+    const hesitationScore = Math.max(0, 1 - totalPenalty);
+    
+    return hesitationScore;
+  }
+  
+  private analyzeTimingPrecision(onsets: number[]): number {
+    if (onsets.length < 2) return 0.5;
+    
+    // Analyze the precision of onset timing for passage cleanness
+    const intervals = this.calculateOnsetIntervals(onsets);
+    
+    if (intervals.length === 0) return 0.5;
+    
+    // Estimate the intended beat interval
+    const medianInterval = this.calculateMedian(intervals);
+    
+    // Calculate how precisely onsets align with the intended rhythm
+    let precisionScore = 0;
+    
+    for (const interval of intervals) {
+      // Calculate deviation from intended interval
+      const deviation = Math.abs(interval - medianInterval);
+      const precision = Math.max(0, 1 - (deviation / (medianInterval * 0.3))); // 30% tolerance
+      precisionScore += precision;
+    }
+    
+    return precisionScore / intervals.length;
+  }
+  
+  
+  private calculateVariance(values: number[]): number {
+    if (values.length === 0) return 0;
+    
+    const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+    const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+    
+    return variance;
+  }
+  
+  private combineCleannessFactor(
+    spectralCleanness: number,
+    onsetCleanness: number,
+    passageFlow: number,
+    timingPrecision: number
+  ): number {
+    // Combine different cleanness factors with appropriate weights
+    const spectralWeight = 0.25;    // Spectral stability
+    const onsetWeight = 0.25;       // Clean attacks
+    const flowWeight = 0.30;        // Passage continuity
+    const timingWeight = 0.20;      // Timing precision
+    
+    const combinedCleanness = (spectralCleanness * spectralWeight) +
+                             (onsetCleanness * onsetWeight) +
+                             (passageFlow * flowWeight) +
+                             (timingPrecision * timingWeight);
+    
+    return combinedCleanness;
   }
 
   private calculateFingeringAccuracy(pitchTrack: number[]): number {
