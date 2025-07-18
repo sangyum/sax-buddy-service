@@ -16,10 +16,10 @@ export interface EssentiaConfig {
     minDepth: number;
     qualityThreshold: number;
   };
-  validation?: {
-    minSampleRate?: number;
-    maxSampleRate?: number;
-    preferredSampleRate?: number;
+  validation: {
+    minSampleRate: number;
+    maxSampleRate: number;
+    preferredSampleRate: number;
   };
 }
 
@@ -157,7 +157,7 @@ export class EssentiaProcessor {
             const validCentroid = isFinite(centroid.spectralCentroid) && 
                                  centroid.spectralCentroid >= SAXOPHONE_CONFIG.DEFAULT_RANGE.LOWEST && 
                                  centroid.spectralCentroid <= SAXOPHONE_CONFIG.DEFAULT_RANGE.HIGHEST * 5 ? 
-                                 centroid.spectralCentroid : 0;
+              centroid.spectralCentroid : 0;
             spectralFeatures.centroid.push(validCentroid);
           } catch (error) {
             spectralFeatures.centroid.push(0);
@@ -169,7 +169,7 @@ export class EssentiaProcessor {
             const validRolloff = isFinite(rolloff.spectralRolloff) && 
                                 rolloff.spectralRolloff >= SAXOPHONE_CONFIG.DEFAULT_RANGE.LOWEST && 
                                 rolloff.spectralRolloff <= SAXOPHONE_CONFIG.DEFAULT_RANGE.HIGHEST * 8 ? 
-                                rolloff.spectralRolloff : 0;
+              rolloff.spectralRolloff : 0;
             spectralFeatures.rolloff.push(validRolloff);
           } catch (error) {
             spectralFeatures.rolloff.push(0);
@@ -191,12 +191,12 @@ export class EssentiaProcessor {
 
           try {
             // Use saxophone-optimized MFCC parameters
-          const mfccResult = this.essentia.MFCC(
-            spectrumResult.spectrum, 
-            40, 
-            13, 
-            this.config.sampleRate
-          );
+            const mfccResult = this.essentia.MFCC(
+              spectrumResult.spectrum, 
+              40, 
+              13, 
+              this.config.sampleRate
+            );
             const mfccArray = Array.from(mfccResult.mfcc || []);
             const validMfcc = mfccArray.map(coeff => isFinite(coeff) ? coeff : 0);
             spectralFeatures.mfcc.push(validMfcc);
@@ -490,7 +490,7 @@ export class EssentiaProcessor {
     
     const { minSampleRate, maxSampleRate, preferredSampleRate } = this.config.validation;
     
-    if (this.config.sampleRate < minSampleRate!) {
+    if (this.config.sampleRate < minSampleRate) {
       this.logger.warn("Sample rate below minimum for saxophone analysis", {
         current: this.config.sampleRate,
         minimum: minSampleRate,
@@ -498,7 +498,7 @@ export class EssentiaProcessor {
       });
     }
     
-    if (this.config.sampleRate > maxSampleRate!) {
+    if (this.config.sampleRate > maxSampleRate) {
       this.logger.warn("Sample rate above maximum practical limit", {
         current: this.config.sampleRate,
         maximum: maxSampleRate,

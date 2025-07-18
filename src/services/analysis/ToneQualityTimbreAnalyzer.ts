@@ -12,11 +12,11 @@ export interface VibratoConfig {
   minRate: number;
   maxRate: number;
   minDepth: number;
-  maxDepth?: number;
-  optimalRate?: number;
-  optimalDepth?: number;
+  maxDepth: number;
+  optimalRate: number;
+  optimalDepth: number;
   qualityThreshold: number;
-  consistencyThreshold?: number;
+  consistencyThreshold: number;
 }
 
 export class ToneQualityTimbreAnalyzer {
@@ -31,7 +31,7 @@ export class ToneQualityTimbreAnalyzer {
       optimalDepth: vibratoConfig.optimalDepth ?? SAXOPHONE_CONFIG.VIBRATO.OPTIMAL_DEPTH,
       consistencyThreshold: vibratoConfig.consistencyThreshold ?? SAXOPHONE_CONFIG.VIBRATO.CONSISTENCY_THRESHOLD
     };
-    this.saxophoneType = 'ALTO'; // Default, will be updated during analysis
+    this.saxophoneType = "ALTO"; // Default, will be updated during analysis
   }
 
   async analyze(analysisResult: EssentiaAnalysisResult): Promise<ToneQualityTimbreAnalysis> {
@@ -599,7 +599,7 @@ export class ToneQualityTimbreAnalyzer {
 
         // Use saxophone-specific vibrato detection
         const vibratoDepthCents = this.convertFrequencyDeviationToCents(stats.std, pitch);
-        if (vibratoDepthCents > this.vibratoConfig.minDepth && vibratoDepthCents < this.vibratoConfig.maxDepth!) {
+        if (vibratoDepthCents > this.vibratoConfig.minDepth && vibratoDepthCents < this.vibratoConfig.maxDepth) {
           if (!inVibratoRegion) {
             currentRegionStart = i;
             inVibratoRegion = true;
@@ -712,7 +712,7 @@ export class ToneQualityTimbreAnalyzer {
     
     // Clamp to saxophone vibrato range
     return Math.max(this.vibratoConfig.minRate, 
-                   Math.min(this.vibratoConfig.maxRate, rate));
+      Math.min(this.vibratoConfig.maxRate, rate));
   }
 
   private calculateVibratoQuality(rate: number, depth: number, pitchConfidence: number[]): number {
@@ -720,8 +720,8 @@ export class ToneQualityTimbreAnalyzer {
     const confidenceScore = AudioUtils.calculateStatistics(pitchConfidence).mean;
     
     // Penalize rates and depths outside optimal range
-    const rateScore = 1 - Math.abs(rate - this.vibratoConfig.optimalRate!) / this.vibratoConfig.optimalRate!;
-    const depthScore = 1 - Math.abs(depth - this.vibratoConfig.optimalDepth!) / this.vibratoConfig.optimalDepth!;
+    const rateScore = 1 - Math.abs(rate - this.vibratoConfig.optimalRate) / this.vibratoConfig.optimalRate;
+    const depthScore = 1 - Math.abs(depth - this.vibratoConfig.optimalDepth) / this.vibratoConfig.optimalDepth;
     
     // Combine scores
     const quality = (confidenceScore * 0.4) + (rateScore * 0.3) + (depthScore * 0.3);

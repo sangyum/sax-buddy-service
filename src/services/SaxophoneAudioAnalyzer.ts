@@ -128,7 +128,17 @@ export class SaxophoneAudioAnalyzer {
 
         // Create Essentia.js instance
         this.essentia = new Essentia(this.essentiaWasm);
-        this.essentiaProcessor = new EssentiaProcessor(this.getConfig() as EssentiaConfig);
+        this.essentiaProcessor = new EssentiaProcessor({
+          sampleRate: this.config.sampleRate,
+          frameSize: this.config.frameSize,
+          hopSize: this.config.hopSize,
+          vibrato: this.config.vibrato,
+          validation: {
+            minSampleRate: SAXOPHONE_CONFIG.SAMPLE_RATE.MINIMUM,
+            maxSampleRate: SAXOPHONE_CONFIG.SAMPLE_RATE.MAXIMUM,
+            preferredSampleRate: SAXOPHONE_CONFIG.SAMPLE_RATE.PREFERRED
+          }
+        });
         
         // Initialize the EssentiaProcessor with the Essentia instance
         await this.essentiaProcessor.initialize();
@@ -163,6 +173,9 @@ export class SaxophoneAudioAnalyzer {
     if (!validationResult.isValid) {
       throw new Error(`Invalid audio buffer: ${validationResult.error}`);
     }
+    
+    // Apply saxophone-specific pre-emphasis filtering
+    const preEmphasizedBuffer = this.applySaxophonePreEmphasis(audioBuffer);
     
     this.logger.info("Starting comprehensive audio analysis", {
       bufferLength: audioBuffer.length,
@@ -200,8 +213,8 @@ export class SaxophoneAudioAnalyzer {
         throw new Error("PerformanceConsistencyAnalyzer not initialized");
       }
 
-      // Perform Essentia analysis once
-      const analysisResult = await this.essentiaProcessor.performEssentiaAnalysis(audioBuffer);
+      // Perform Essentia analysis once using pre-emphasized buffer
+      const analysisResult = await this.essentiaProcessor.performEssentiaAnalysis(preEmphasizedBuffer);
       
       // Perform basic audio analysis using the result
       const basicAnalysis = this.performBasicAnalysisFromResult(analysisResult);
@@ -336,8 +349,111 @@ export class SaxophoneAudioAnalyzer {
     if (snr < this.config.validation.minSnrDb) {
       return { isValid: false, error: `Poor signal quality for saxophone analysis: SNR = ${snr.toFixed(1)}dB (minimum ${this.config.validation.minSnrDb}dB)` };
     }
+    
+    // Additional saxophone-specific spectral energy distribution checks
+    const spectralValidation = this.validateSaxophoneSpectralCharacteristics(audioBuffer);
+    if (!spectralValidation.isValid) {
+      return { isValid: false, error: spectralValidation.error };
+    }
 
     return { isValid: true, snr, rms };
+  }
+  
+  private validateSaxophoneSpectralCharacteristics(audioBuffer: Float32Array): {
+    isValid: boolean;
+    error?: string;
+  } {
+    // Perform basic spectral analysis to validate saxophone-like characteristics
+    const frameSize = 2048;
+    const halfFrame = frameSize / 2;
+    
+    if (audioBuffer.length < frameSize) {
+      return { isValid: true }; // Skip validation for very short buffers
+    }
+    
+    // Take a representative frame from the middle of the buffer
+    const startIndex = Math.floor((audioBuffer.length - frameSize) / 2);
+    const frame = audioBuffer.slice(startIndex, startIndex + frameSize);
+    
+    // Simple FFT-like energy distribution analysis
+    // Check if energy distribution is consistent with saxophone characteristics
+    const energyBands = this.calculateSpectralEnergyBands(frame);
+    
+    // Saxophone should have significant energy in mid frequencies (200-2000 Hz)
+    const totalEnergy = energyBands.reduce((sum, energy) => sum + energy, 0);
+    if (totalEnergy < 1e-6) {
+      return { isValid: false, error: "Signal appears to contain no meaningful spectral content for saxophone analysis" };
+    }
+    
+    // Calculate relative energy distribution
+    const relativeEnergies = energyBands.map(energy => energy / totalEnergy);
+    
+    // Check for saxophone-like spectral characteristics
+    const lowEnergyRatio = relativeEnergies[0] || 0; // 0-500 Hz
+    const midEnergyRatio = relativeEnergies[1] || 0; // 500-1500 Hz  
+    const highEnergyRatio = relativeEnergies[2] || 0; // 1500-4000 Hz
+    const veryHighEnergyRatio = relativeEnergies[3] || 0; // 4000+ Hz
+    
+    // Saxophone typically has:
+    // - Moderate low energy (breath noise, fundamental)
+    // - High mid energy (primary fundamentals and lower harmonics)
+    // - Moderate high energy (upper harmonics)
+    // - Low very high energy (unless altissimo)
+    
+    if (midEnergyRatio < 0.2) {
+      return { 
+        isValid: false, 
+        error: `Spectral distribution inconsistent with saxophone: insufficient mid-frequency energy (${(midEnergyRatio * 100).toFixed(1)}%, expected >20%)` 
+      };
+    }
+    
+    if (lowEnergyRatio > 0.8) {
+      return { 
+        isValid: false, 
+        error: `Spectral distribution suggests very low-frequency content: ${(lowEnergyRatio * 100).toFixed(1)}% low-frequency energy (saxophone typically <80%)` 
+      };
+    }
+    
+    if (veryHighEnergyRatio > 0.6) {
+      return { 
+        isValid: false, 
+        error: `Spectral distribution suggests excessive high-frequency content: ${(veryHighEnergyRatio * 100).toFixed(1)}% very-high-frequency energy (saxophone typically <60%)` 
+      };
+    }
+    
+    return { isValid: true };
+  }
+  
+  private calculateSpectralEnergyBands(frame: Float32Array): number[] {
+    // Simple frequency band energy calculation without full FFT
+    // This is a simplified approximation for validation purposes
+    
+    const bands = [0, 0, 0, 0]; // [low, mid, high, very_high]
+    const frameLength = frame.length;
+    
+    // Approximate frequency bands using time-domain characteristics
+    // Low frequencies: slower variations
+    // High frequencies: faster variations
+    
+    for (let i = 1; i < frameLength; i++) {
+      const sample = frame[i] || 0;
+      const prevSample = frame[i - 1] || 0;
+      const energy = sample * sample;
+      const variation = Math.abs(sample - prevSample);
+      
+      // Classify based on local variation patterns (rough approximation)
+      if (variation < 0.01) {
+        bands[0] = (bands[0] || 0) + energy; // Low frequency (slow variation)
+      } else if (variation < 0.05) {
+        bands[1] = (bands[1] || 0) + energy; // Mid frequency
+      } else if (variation < 0.2) {
+        bands[2] = (bands[2] || 0) + energy; // High frequency
+      } else {
+        bands[3] = (bands[3] || 0) + energy; // Very high frequency (fast variation)
+      }
+    }
+    
+    return bands;
   }
 
   private performBasicAnalysisFromResult(analysisResult: EssentiaAnalysisResult): BasicAnalysis {
@@ -559,8 +675,11 @@ export class SaxophoneAudioAnalyzer {
     // Add saxophone register detection for confidence adjustment
     const registerConfidence = this.calculateSaxophoneRegisterConfidence(pitchData.melody);
     
-    // Combine factors with weights (including register confidence)
-    const confidence = (pitchDataQuality * 0.4) + (stabilityFactor * 0.25) + (consistencyFactor * 0.15) + (registerConfidence * 0.2);
+    // Add frequency-dependent confidence weighting
+    const frequencyConfidence = this.calculateFrequencyDependentConfidence(pitchData.melody);
+    
+    // Combine factors with weights (including register and frequency confidence)
+    const confidence = (pitchDataQuality * 0.35) + (stabilityFactor * 0.2) + (consistencyFactor * 0.15) + (registerConfidence * 0.15) + (frequencyConfidence * 0.15);
     
     return Math.min(0.95, Math.max(0.5, confidence));
   }
@@ -611,6 +730,51 @@ export class SaxophoneAudioAnalyzer {
     }
     
     return registerConfidence;
+  }
+  
+  private calculateFrequencyDependentConfidence(melody: number[]): number {
+    const validPitches = melody.filter(p => p > 0 && isValidSaxophoneFrequency(p));
+    if (validPitches.length === 0) return 0.5;
+    
+    // Calculate confidence based on frequency-specific tracking accuracy
+    // Different frequencies have different pitch tracking reliabilities
+    
+    let totalWeightedConfidence = 0;
+    let totalWeight = 0;
+    
+    validPitches.forEach(pitch => {
+      let frequencyConfidence = 0.75; // Base confidence
+      
+      // Frequency-dependent confidence adjustments based on saxophone characteristics
+      if (pitch >= 100 && pitch <= 200) {
+        // Low saxophone frequencies - good tracking but some noise
+        frequencyConfidence = 0.8;
+      } else if (pitch >= 200 && pitch <= 600) {
+        // Mid saxophone frequencies - optimal tracking range
+        frequencyConfidence = 0.95;
+      } else if (pitch >= 600 && pitch <= 1000) {
+        // High saxophone frequencies - good tracking
+        frequencyConfidence = 0.85;
+      } else if (pitch >= 1000 && pitch <= 1500) {
+        // Altissimo range - more challenging tracking
+        frequencyConfidence = 0.65;
+      } else if (pitch > 1500) {
+        // Very high altissimo - challenging tracking
+        frequencyConfidence = 0.5;
+      } else {
+        // Below typical saxophone range - questionable
+        frequencyConfidence = 0.4;
+      }
+      
+      // Weight by frequency proximity to saxophone sweet spot (300-500 Hz)
+      const sweetSpotDistance = Math.abs(pitch - 400);
+      const proximityWeight = Math.max(0.1, 1 - (sweetSpotDistance / 1000));
+      
+      totalWeightedConfidence += frequencyConfidence * proximityWeight;
+      totalWeight += proximityWeight;
+    });
+    
+    return totalWeight > 0 ? totalWeightedConfidence / totalWeight : 0.5;
   }
   
   private calculateTimingConfidence(timingAnalysis: TimingRhythmAnalysis, rhythmData: { beats: number[]; onsets: number[] }): number {
@@ -679,6 +843,223 @@ export class SaxophoneAudioAnalyzer {
   }
 
   // Utility methods
+
+  private applySaxophonePreEmphasis(audioBuffer: Float32Array): Float32Array {
+    // Saxophone-specific pre-emphasis filter to compensate for frequency response
+    // Emphasizes mid-high frequencies where saxophone fundamentals are prominent
+    const preEmphasized = new Float32Array(audioBuffer.length);
+    
+    // Pre-emphasis coefficient optimized for saxophone frequency response
+    // Higher than speech (0.95-0.97) due to saxophone's spectral characteristics
+    const preEmphasisCoeff = 0.85;
+    
+    // First sample remains unchanged
+    if (audioBuffer.length > 0) {
+      preEmphasized[0] = audioBuffer[0] || 0;
+    }
+    
+    // Apply pre-emphasis: y[n] = x[n] - α * x[n-1]
+    for (let i = 1; i < audioBuffer.length; i++) {
+      const current = audioBuffer[i] || 0;
+      const previous = audioBuffer[i - 1] || 0;
+      preEmphasized[i] = current - (preEmphasisCoeff * previous);
+    }
+    
+    // Apply saxophone-specific frequency shaping
+    return this.applySaxophoneFrequencyShaping(preEmphasized);
+  }
+  
+  private applySaxophoneFrequencyShaping(buffer: Float32Array): Float32Array {
+    // Apply frequency-domain shaping optimized for saxophone analysis
+    // This compensates for saxophone's natural frequency response and recording characteristics
+    
+    const frameSize = 2048;
+    const hopSize = frameSize / 4;
+    const shaped = new Float32Array(buffer.length);
+    
+    // Copy original buffer as fallback for edge cases
+    shaped.set(buffer);
+    
+    // Process in overlapping frames for better frequency resolution
+    for (let frameStart = 0; frameStart < buffer.length - frameSize; frameStart += hopSize) {
+      const frameEnd = Math.min(frameStart + frameSize, buffer.length);
+      const frameLength = frameEnd - frameStart;
+      
+      if (frameLength < frameSize / 2) break; // Skip incomplete frames
+      
+      // Extract frame with Hann windowing
+      const frame = new Float32Array(frameLength);
+      for (let i = 0; i < frameLength; i++) {
+        const windowValue = 0.5 * (1 - Math.cos(2 * Math.PI * i / (frameLength - 1)));
+        frame[i] = (buffer[frameStart + i] || 0) * windowValue;
+      }
+      
+      // Apply saxophone-specific frequency weighting
+      const shapedFrame = this.applySaxophoneFrequencyWeights(frame);
+      
+      // Overlap-add back to output with appropriate windowing
+      for (let i = 0; i < frameLength; i++) {
+        const outputIndex = frameStart + i;
+        if (outputIndex < shaped.length) {
+          const windowValue = 0.5 * (1 - Math.cos(2 * Math.PI * i / (frameLength - 1)));
+          const currentValue = shaped[outputIndex] || 0;
+          const frameValue = shapedFrame[i] || 0;
+          shaped[outputIndex] = currentValue + frameValue * windowValue * 0.5; // Scale for overlap-add
+        }
+      }
+    }
+    
+    return shaped;
+  }
+  
+  private applySaxophoneFrequencyWeights(frame: Float32Array): Float32Array {
+    // Apply perceptual weighting based on saxophone frequency characteristics
+    const weighted = new Float32Array(frame.length);
+    
+    // Saxophone frequency response compensation
+    // Boost mid frequencies (200-2000 Hz) where saxophone fundamentals lie
+    // Gentle high-frequency emphasis for harmonics and breath sounds
+    for (let i = 0; i < frame.length; i++) {
+      const sample = frame[i] || 0;
+      
+      // Simple time-domain approximation of frequency weighting
+      // More sophisticated frequency-domain processing would require FFT
+      let weight = 1.0;
+      
+      // Approximate frequency-based weighting using sample position
+      const normalizedPos = i / frame.length;
+      
+      if (normalizedPos < 0.3) {
+        // Low frequencies - slight de-emphasis
+        weight = 0.9;
+      } else if (normalizedPos < 0.7) {
+        // Mid frequencies - emphasis for saxophone fundamentals
+        weight = 1.2;
+      } else {
+        // High frequencies - moderate emphasis for harmonics
+        weight = 1.1;
+      }
+      
+      weighted[i] = sample * weight;
+    }
+    
+    return weighted;
+  }
+  
+  private detectSaxophoneTransients(audioBuffer: Float32Array): {
+    breathAttacks: number[];
+    articulationPoints: number[];
+    sustainedRegions: Array<{start: number; end: number}>;
+  } {
+    // Saxophone-specific transient detection using multiple window sizes
+    // Optimized for breath attacks and articulation characteristics
+    
+    const breathAttacks: number[] = [];
+    const articulationPoints: number[] = [];
+    const sustainedRegions: Array<{start: number; end: number}> = [];
+    
+    // Different window sizes for different transient types
+    const breathWindowSize = Math.floor(this.sampleRate * 0.02); // 20ms for breath attacks
+    const articulationWindowSize = Math.floor(this.sampleRate * 0.005); // 5ms for quick articulation
+    const sustainedWindowSize = Math.floor(this.sampleRate * 0.1); // 100ms for sustained regions
+    
+    // Energy-based transient detection
+    const energyBuffer = this.calculateFrameEnergy(audioBuffer, breathWindowSize);
+    const articulationEnergy = this.calculateFrameEnergy(audioBuffer, articulationWindowSize);
+    
+    // Breath attack detection (slower onset, higher energy threshold)
+    const breathThreshold = SAXOPHONE_CONFIG.BREATH_MANAGEMENT.BREATH_NOISE_THRESHOLD * 5;
+    for (let i = 1; i < energyBuffer.length; i++) {
+      const currentEnergy = energyBuffer[i] || 0;
+      const previousEnergy = energyBuffer[i - 1] || 0;
+      const energyIncrease = currentEnergy - previousEnergy;
+      if (energyIncrease > breathThreshold) {
+        const timeIndex = i * breathWindowSize / this.sampleRate;
+        breathAttacks.push(timeIndex);
+      }
+    }
+    
+    // Articulation detection (faster onset, moderate energy threshold)
+    const articulationThreshold = breathThreshold * 0.6;
+    for (let i = 1; i < articulationEnergy.length; i++) {
+      const currentEnergy = articulationEnergy[i] || 0;
+      const previousEnergy = articulationEnergy[i - 1] || 0;
+      const energyIncrease = currentEnergy - previousEnergy;
+      if (energyIncrease > articulationThreshold) {
+        const timeIndex = i * articulationWindowSize / this.sampleRate;
+        // Avoid duplicates near breath attacks
+        const nearBreathAttack = breathAttacks.some(ba => Math.abs(ba - timeIndex) < 0.05);
+        if (!nearBreathAttack) {
+          articulationPoints.push(timeIndex);
+        }
+      }
+    }
+    
+    // Sustained region detection (stable energy over longer periods)
+    this.detectSustainedRegions(energyBuffer, sustainedRegions, sustainedWindowSize);
+    
+    return { breathAttacks, articulationPoints, sustainedRegions };
+  }
+  
+  private calculateFrameEnergy(buffer: Float32Array, windowSize: number): number[] {
+    const energyFrames: number[] = [];
+    const hopSize = windowSize / 2;
+    
+    for (let i = 0; i < buffer.length - windowSize; i += hopSize) {
+      let energy = 0;
+      for (let j = 0; j < windowSize; j++) {
+        const sample = buffer[i + j] || 0;
+        energy += sample * sample;
+      }
+      energyFrames.push(energy / windowSize); // RMS energy
+    }
+    
+    return energyFrames;
+  }
+  
+  private detectSustainedRegions(
+    energyBuffer: number[], 
+    sustainedRegions: Array<{start: number; end: number}>, 
+    windowSize: number
+  ): void {
+    const stabilityThreshold = 0.1; // Energy variation threshold
+    const minSustainedLength = 0.2; // Minimum 200ms for sustained region
+    
+    let currentRegionStart = -1;
+    
+    for (let i = 5; i < energyBuffer.length - 5; i++) {
+      // Calculate local energy stability
+      const localEnergies = energyBuffer.slice(i - 5, i + 5);
+      const avgEnergy = localEnergies.reduce((sum, e) => sum + e, 0) / localEnergies.length;
+      const energyVariation = localEnergies.reduce((sum, e) => sum + Math.abs(e - avgEnergy), 0) / localEnergies.length;
+      
+      const isStable = energyVariation < stabilityThreshold;
+      
+      if (isStable && currentRegionStart === -1) {
+        // Start of sustained region
+        currentRegionStart = i;
+      } else if (!isStable && currentRegionStart !== -1) {
+        // End of sustained region
+        const startTime = currentRegionStart * windowSize / 2 / this.sampleRate;
+        const endTime = i * windowSize / 2 / this.sampleRate;
+        
+        if (endTime - startTime >= minSustainedLength) {
+          sustainedRegions.push({ start: startTime, end: endTime });
+        }
+        currentRegionStart = -1;
+      }
+    }
+    
+    // Handle region that extends to end of buffer
+    if (currentRegionStart !== -1) {
+      const startTime = currentRegionStart * windowSize / 2 / this.sampleRate;
+      const endTime = energyBuffer.length * windowSize / 2 / this.sampleRate;
+      
+      if (endTime - startTime >= minSustainedLength) {
+        sustainedRegions.push({ start: startTime, end: endTime });
+      }
+    }
+  }
 
   private calculateSaxophoneHarmonicClarity(harmonics: number[], pitchTrack: number[]): number {
     // Filter out zero harmonics

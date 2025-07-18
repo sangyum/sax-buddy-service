@@ -4,8 +4,7 @@ import {
   SAXOPHONE_CONFIG, 
   detectSaxophoneType, 
   getSaxophoneRange, 
-  isValidSaxophoneFrequency, 
-  isAltissimoRange 
+  isValidSaxophoneFrequency
 } from "./SaxophoneConstants";
 
 export interface PitchAnalysisConfig {
@@ -13,9 +12,9 @@ export interface PitchAnalysisConfig {
   medianFilterSize: number;
   confidenceThreshold: number;
   octaveErrorThreshold: number;
-  pitchStabilityThreshold?: number;
-  intonationTolerance?: number;
-  vibratoPitchDeviation?: number;
+  pitchStabilityThreshold: number;
+  intonationTolerance: number;
+  vibratoPitchDeviation: number;
 }
 
 export class PitchIntonationAnalyzer {
@@ -29,7 +28,7 @@ export class PitchIntonationAnalyzer {
       intonationTolerance: config.intonationTolerance ?? SAXOPHONE_CONFIG.PITCH_ANALYSIS.INTONATION_TOLERANCE,
       vibratoPitchDeviation: config.vibratoPitchDeviation ?? SAXOPHONE_CONFIG.PITCH_ANALYSIS.VIBRATO_PITCH_DEVIATION
     };
-    this.saxophoneType = 'ALTO'; // Default, will be updated during analysis
+    this.saxophoneType = "ALTO"; // Default, will be updated during analysis
   }
 
   async analyze(analysisResult: EssentiaAnalysisResult): Promise<PitchIntonationAnalysis> {
@@ -141,7 +140,7 @@ export class PitchIntonationAnalyzer {
 
     const stats = AudioUtils.calculateStatistics(pitches);
     // Use saxophone-specific stability threshold
-    const stabilityThreshold = this.config.pitchStabilityThreshold! * 100; // Convert to Hz
+    const stabilityThreshold = this.config.pitchStabilityThreshold * 100; // Convert to Hz
     const stability = Math.max(0, 1 - (stats.std / stabilityThreshold));
     return Math.min(1, stability);
   }
@@ -203,7 +202,7 @@ export class PitchIntonationAnalyzer {
     const avgDeviation = deviations.reduce((sum, dev) => sum + dev, 0) / deviations.length;
 
     // Use saxophone-specific interval tolerance (in semitones)
-    const intervalTolerance = this.config.intonationTolerance! / 100; // Convert cents to semitones
+    const intervalTolerance = this.config.intonationTolerance / 100; // Convert cents to semitones
     return Math.max(0, 1 - (avgDeviation / intervalTolerance));
   }
 
@@ -229,7 +228,7 @@ export class PitchIntonationAnalyzer {
     });
 
     const finalDrift = driftOverTime[driftOverTime.length - 1] || 0;
-    const stabilityThreshold = this.config.pitchStabilityThreshold! * 1200; // Convert to cents
+    const stabilityThreshold = this.config.pitchStabilityThreshold * 1200; // Convert to cents
     const direction: "flat" | "sharp" | "stable" =
       Math.abs(finalDrift) < stabilityThreshold ? "stable" :
         finalDrift < 0 ? "flat" : "sharp";
@@ -276,7 +275,7 @@ export class PitchIntonationAnalyzer {
       const avgDeviation = rangeDeviations.reduce((sum, dev) => sum + dev, 0) / rangeDeviations.length;
 
       // Use saxophone-specific intonation tolerance
-      const accuracy = Math.max(0, 1 - (avgDeviation / this.config.intonationTolerance!));
+      const accuracy = Math.max(0, 1 - (avgDeviation / this.config.intonationTolerance));
 
       return { range: range.name, accuracy };
     });
