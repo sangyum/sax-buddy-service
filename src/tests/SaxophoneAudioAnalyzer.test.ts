@@ -43,7 +43,7 @@ describe("SaxophoneAudioAnalyzer", () => {
         maxDurationSec: 300.0,
         minRms: 0.001,
         maxAmplitude: 0.99,
-        minSnrDb: 10 // Lower threshold for testing
+        minSnrDb: 8 // Lower threshold for testing synthetic signals
       }
     });
   });

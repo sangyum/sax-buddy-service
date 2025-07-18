@@ -1,3 +1,5 @@
+import { ArticulationClarityAnalysis, BreathManagementAnalysis, ExtendedTechniquesAnalysis, FingerTechniqueAnalysis } from "./analyzer";
+
 // Using Date instead of Firebase Timestamp for independence from firebase-admin
 export type Timestamp = Date;
 
@@ -103,34 +105,14 @@ export interface ToneQualityTimbreAnalysis {
 }
 
 export interface TechnicalExecutionAnalysis {
-  articulationClarity: {
-    tonguingPrecision: number;
-    attackConsistency: number;
-    articulationTypes: Record<string, number>;
-    clarityByTempo: Record<string, number>;
-  };
-  fingerTechniqueEfficiency: {
-    keyTransitionSmoothness: number;
-    passageCleanness: number;
-    fingeringAccuracy: number;
-    technicalPassageSuccess: Record<string, number>;
-  };
-  breathManagementIndicators: {
-    phraseLength: number[];
-    breathingPlacement: Array<{ 
-      time: number; 
-      appropriateness: number; 
-    }>;
-    sustainCapacity: number;
-    breathSupportConsistency: number;
-  };
-  extendedTechniqueMastery: {
-    multiphonicsClarity: number;
-    altissimoControl: number;
-    growlExecution: number;
-    bendAccuracy: number;
-    otherTechniques: Record<string, number>;
-  };
+  articulationClarity: ArticulationClarityAnalysis,
+  fingerTechniqueEfficiency: FingerTechniqueAnalysis,
+  breathManagementIndicators: BreathManagementAnalysis,
+  extendedTechniqueMastery: ExtendedTechniquesAnalysis,
+  // articulationTypes: number[],
+  // clarityByTempo: number[],
+  // technicalPassageAccuracy: number[],
+  // otherExtendedTechniques: number[]
 }
 
 export interface MusicalExpressionAnalysis {
