@@ -4,7 +4,7 @@ dist/
 *.js.map
 
 # Include specific config files
-!.eslintrc.js
+!eslint.config.js
 
 # Dependencies
 node_modules/
