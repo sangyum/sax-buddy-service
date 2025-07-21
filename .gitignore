@@ -3,6 +3,9 @@ dist/
 *.js
 *.js.map
 
+# Include specific config files
+!.eslintrc.js
+
 # Dependencies
 node_modules/
 
