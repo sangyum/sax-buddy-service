@@ -23,7 +23,7 @@ export class StorageService {
 
       // Get file metadata
       const [metadata] = await file.getMetadata();
-      const fileSize = parseInt(metadata.size || "0");
+      const fileSize = parseInt(metadata.size?.toString() || "0");
       
       this.logger.debug("File metadata retrieved", { 
         filePath,
@@ -112,6 +112,7 @@ export class StorageService {
 
       throw new Error(`Unsupported storage URL format: ${url}`);
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       throw new Error(`Failed to parse storage URL: ${url}`);
     }

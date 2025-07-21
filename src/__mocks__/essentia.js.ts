@@ -75,7 +75,6 @@ export class Essentia {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   SpectralFlux(): unknown {
     return {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
