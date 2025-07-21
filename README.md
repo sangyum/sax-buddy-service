@@ -148,6 +148,16 @@ npm run serve
 npm run deploy
 ```
 
+### Development Workflow
+
+Follow Test-Driven Development (TDD) practices:
+
+1. **Write failing test** for new functionality
+2. **Implement minimal code** to make test pass
+3. **Refactor** code while keeping tests green
+4. **Run tests** after every change: `npm run test`
+5. **Run linting** before committing: `npm run lint`
+
 ### Scripts
 
 - `npm run build` - Compile TypeScript
@@ -155,7 +165,9 @@ npm run deploy
 - `npm run serve` - Start Firebase emulators
 - `npm run deploy` - Deploy to Firebase
 - `npm run lint` - Run ESLint
+- `npm run lint:fix` - Auto-fix linting issues
 - `npm run test` - Run unit tests
+- `npm run test:watch` - Run tests in watch mode
 
 ## Configuration
 
